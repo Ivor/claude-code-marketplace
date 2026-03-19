@@ -46,18 +46,35 @@ build_hook_input() {
     local tool_name="$1"
     local tool_input="$2"
     local transcript_path="${3:-}"
+    local agent_id="${4:-}"
 
-    jq -n \
-        --arg tool_name "$tool_name" \
-        --argjson tool_input "$tool_input" \
-        --arg cwd "$TEST_DIR/project" \
-        --arg transcript_path "$transcript_path" \
-        '{
-            tool_name: $tool_name,
-            tool_input: $tool_input,
-            cwd: $cwd,
-            transcript_path: $transcript_path
-        }'
+    if [[ -n "$agent_id" ]]; then
+        jq -n \
+            --arg tool_name "$tool_name" \
+            --argjson tool_input "$tool_input" \
+            --arg cwd "$TEST_DIR/project" \
+            --arg transcript_path "$transcript_path" \
+            --arg agent_id "$agent_id" \
+            '{
+                tool_name: $tool_name,
+                tool_input: $tool_input,
+                cwd: $cwd,
+                transcript_path: $transcript_path,
+                agent_id: $agent_id
+            }'
+    else
+        jq -n \
+            --arg tool_name "$tool_name" \
+            --argjson tool_input "$tool_input" \
+            --arg cwd "$TEST_DIR/project" \
+            --arg transcript_path "$transcript_path" \
+            '{
+                tool_name: $tool_name,
+                tool_input: $tool_input,
+                cwd: $cwd,
+                transcript_path: $transcript_path
+            }'
+    fi
 }
 
 # Run the hook and capture output + exit code
@@ -345,6 +362,54 @@ else
     echo -e "  ${RED}FAIL${RESET} Plugin data config takes priority over project config (expected: data-dir-skill in deny reason)"
     ((FAIL++))
 fi
+
+# --- Test Group 9: Subagent transcript resolution ---
+echo -e "\n${BOLD}9. Subagent transcript resolution${RESET}"
+
+# Set up: main transcript (empty, no skill), subagent transcript (has skill)
+AGENT_ID="test-agent-123"
+main_transcript="$TEST_DIR/session.jsonl"
+echo '{}' > "$main_transcript"
+
+# Create subagent transcript directory and file
+mkdir -p "$TEST_DIR/session/subagents"
+subagent_transcript="$TEST_DIR/session/subagents/agent-${AGENT_ID}.jsonl"
+echo "$(skill_entry "elixir-best-practices")" > "$subagent_transcript"
+
+create_config '{
+  "mappings": [
+    {
+      "skill": "elixir-best-practices",
+      "tool_matcher": "Read|Write|Edit",
+      "file_patterns": ["^lib/.*\\.ex$"]
+    }
+  ]
+}'
+
+# Without agent_id: main transcript has no skill → deny
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$main_transcript")"
+output="$(run_hook "$input")"
+assert_decision "Main agent, skill not in main transcript → deny" "deny" "$(get_decision "$output")"
+
+# With agent_id: subagent transcript has the skill → allow
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$main_transcript" "$AGENT_ID")"
+output="$(run_hook "$input")"
+assert_decision "Subagent, skill in subagent transcript → allow" "allow" "$(get_decision "$output")"
+
+# With agent_id but skill NOT in subagent transcript → deny
+echo '{}' > "$subagent_transcript"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$main_transcript" "$AGENT_ID")"
+output="$(run_hook "$input")"
+assert_decision "Subagent, skill not in subagent transcript → deny" "deny" "$(get_decision "$output")"
+
+# With agent_id, skill in MAIN transcript only → deny (subagent must load its own)
+main_transcript_with_skill="$TEST_DIR/session-with-skill.jsonl"
+echo "$(skill_entry "elixir-best-practices")" > "$main_transcript_with_skill"
+mkdir -p "$TEST_DIR/session-with-skill/subagents"
+echo '{}' > "$TEST_DIR/session-with-skill/subagents/agent-${AGENT_ID}.jsonl"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$main_transcript_with_skill" "$AGENT_ID")"
+output="$(run_hook "$input")"
+assert_decision "Subagent, skill only in main transcript → deny" "deny" "$(get_decision "$output")"
 
 # ============================================================================
 # RESULTS

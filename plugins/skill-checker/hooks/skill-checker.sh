@@ -404,11 +404,25 @@ main() {
     local transcript_path
     transcript_path="$(json_get "$hook_data" '.transcript_path')"
 
+    # If running inside a subagent, resolve the subagent's own transcript
+    local agent_id
+    agent_id="$(json_get "$hook_data" '.agent_id')"
+    local subagent_transcript=""
+    if [[ -n "$agent_id" ]]; then
+        local session_dir="${transcript_path%.jsonl}"
+        local candidate="${session_dir}/subagents/agent-${agent_id}.jsonl"
+        if [[ -f "$candidate" ]]; then
+            subagent_transcript="$candidate"
+            debug "Subagent detected (${agent_id}), will also check: $subagent_transcript"
+        fi
+    fi
+
     # Debug: Log extracted values
     debug "TOOL_NAME: $TOOL_NAME"
     debug "FILE_PATH: $FILE_PATH"
     debug "CWD: $CWD"
     debug "transcript_path: $transcript_path"
+    debug "subagent_transcript: $subagent_transcript"
 
     # Debug: Check for continuation
     local continuation_ts
@@ -488,12 +502,19 @@ The JSON syntax may be invalid. Please validate the config file."
     fi
 
     # Check which skills are missing
+    # Subagents check their own transcript; main agent checks the main transcript
+    local check_transcript="$transcript_path"
+    if [[ -n "$subagent_transcript" ]]; then
+        check_transcript="$subagent_transcript"
+        debug "Using subagent transcript for skill check"
+    fi
+
     debug "Checking which skills are missing..."
     local missing_skills=()
     while IFS= read -r skill; do
         debug "  - Skill '$skill' is missing"
         [[ -n "$skill" ]] && missing_skills+=("$skill")
-    done < <(get_missing_skills "$transcript_path" "${required_skills[@]}" 2>/dev/null)
+    done < <(get_missing_skills "$check_transcript" "${required_skills[@]}" 2>/dev/null)
 
     # Debug: Log missing skills
     debug "Missing skills count: ${#missing_skills[@]}"

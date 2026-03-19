@@ -43,8 +43,8 @@ Help the user set up or review their skill-checker configuration. The config is 
   "mappings": [
     {
       "skill": "skill-name",
-      "tool_matcher": "Write|Edit",
-      "file_patterns": [".*\\.ext$"],
+      "tool_matcher": "Read|Write|Edit",
+      "file_patterns": ["^lib/.*\\.ex$"],
       "tool_input_matcher": "optional-pattern"
     }
   ]
@@ -52,8 +52,8 @@ Help the user set up or review their skill-checker configuration. The config is 
 ```
 
 - **skill**: Name of the skill to require (must match an installed skill exactly)
-- **tool_matcher**: Regex matching tool names — `Write`, `Edit`, `Bash`, `Grep`, or any MCP tool
-- **file_patterns**: (optional) Regex patterns matched against relative file paths
+- **tool_matcher**: Regex matching tool names — `Read`, `Write`, `Edit`, `Grep`, `Glob`, `Bash`, or any MCP tool. Use `|` for multiple: `"Read|Write|Edit|Grep|Glob"`
+- **file_patterns**: (optional) Regex patterns matched against the **relative path from project root**. Patterns should start with `^` to anchor to the project root (e.g., `"^lib/.*\\.ex$"`, `"^test/.*\\.exs$"`, `"^src/.*\\.tsx$"`)
 - **tool_input_matcher**: (optional) Regex matched against tool input JSON (e.g., `"mix test"` for Bash commands)
 
 ## Notes

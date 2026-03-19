@@ -32,10 +32,10 @@ Add a new skill check mapping for the current project.
      - `"Bash"` — shell commands
      - `"mcp__.*"` — any MCP tool
      - A specific tool name
-   - Should it only apply to certain files? Build regex patterns:
-     - `".*\\.ex$"` — all .ex files
+   - Should it only apply to certain files? Build regex patterns matched against the **relative path from project root** (anchor with `^`):
      - `"^lib/.*\\.ex$"` — .ex files under lib/
-     - `".*\\.heex$"` — HEEx templates
+     - `"^test/.*\\.exs$"` — test files
+     - `"^lib/.*\\.heex$"` — HEEx templates under lib/
      - `"^src/.*\\.(tsx|jsx)$"` — React components under src/
    - Should it match specific tool input? (e.g., `"mix test"`, `"npm run"`)
 

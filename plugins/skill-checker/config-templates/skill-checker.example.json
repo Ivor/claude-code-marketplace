@@ -5,7 +5,7 @@
       "tool_matcher": "Write|Edit",
       "file_patterns": [
         ".*\\.heex$",
-        ".*/live/.*\\.ex$"
+        "^lib/.*/live/.*\\.ex$"
       ]
     },
     {
@@ -13,7 +13,7 @@
       "tool_matcher": "Write|Edit",
       "file_patterns": [
         "^lib/.*\\.ex$",
-        ".*/test/.*\\.exs$"
+        "^test/.*\\.exs$"
       ]
     },
     {

@@ -17,7 +17,7 @@ Explain how the skill-checker plugin works and show the current project's config
 2. **Show the current config** by resolving the config path:
    ```bash
    PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
-   [ -z "$PROJECT_KEY" ] && PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||')
+   if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
    PLUGIN_CONFIG="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}/config.json"
    PROJECT_CONFIG=".claude/hooks/skill-checker.json"
 

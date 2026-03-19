@@ -12,7 +12,7 @@ Explain an existing mapping in the skill-checker configuration in detail.
 1. **Read the config:**
    ```bash
    PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
-   [ -z "$PROJECT_KEY" ] && PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||')
+   if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
    PLUGIN_CONFIG="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}/config.json"
    PROJECT_CONFIG=".claude/hooks/skill-checker.json"
 

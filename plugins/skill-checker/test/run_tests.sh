@@ -411,6 +411,37 @@ input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.e
 output="$(run_hook "$input")"
 assert_decision "Subagent, skill only in main transcript → deny" "deny" "$(get_decision "$output")"
 
+# --- Test Group 10: Qualified plugin:skill names ---
+echo -e "\n${BOLD}10. Qualified plugin:skill name matching${RESET}"
+
+create_config '{
+  "mappings": [
+    {
+      "skill": "elixir-quick-context",
+      "tool_matcher": "Read",
+      "file_patterns": ["^lib/.*\\.ex$"]
+    }
+  ]
+}'
+
+# Config says "elixir-quick-context", transcript has "elixir-quick-context:elixir-quick-context"
+qualified_transcript="$(create_transcript "$(jq -nc '{timestamp:"2026-01-01T12:00:00Z",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"elixir-quick-context:elixir-quick-context"}}]}}')")"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$qualified_transcript")"
+output="$(run_hook "$input")"
+assert_decision "Qualified name plugin:skill matches short config → allow" "allow" "$(get_decision "$output")"
+
+# Config says "elixir-quick-context", transcript has just "elixir-quick-context" (local skill)
+local_transcript="$(create_transcript "$(skill_entry "elixir-quick-context")")"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$local_transcript")"
+output="$(run_hook "$input")"
+assert_decision "Exact name matches config → allow" "allow" "$(get_decision "$output")"
+
+# Config says "elixir-quick-context", transcript has "other-plugin:elixir-quick-context"
+other_plugin_transcript="$(create_transcript "$(jq -nc '{timestamp:"2026-01-01T12:00:00Z",message:{content:[{type:"tool_use",name:"Skill",input:{skill:"other-plugin:elixir-quick-context"}}]}}')")"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$other_plugin_transcript")"
+output="$(run_hook "$input")"
+assert_decision "Different plugin prefix still matches → allow" "allow" "$(get_decision "$output")"
+
 # ============================================================================
 # RESULTS
 # ============================================================================

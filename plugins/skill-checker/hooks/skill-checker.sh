@@ -200,19 +200,18 @@ is_skill_active() {
     local continuation_ts
     continuation_ts="$(find_continuation_timestamp "$transcript_path")"
 
+    # Match exact name or qualified plugin:name format
     local result
     if [[ -n "$continuation_ts" ]]; then
-        # Check skills loaded after continuation
         result="$(jq -c \
             --arg skill "$skill_name" \
             --arg ts "$continuation_ts" \
-            'select(.timestamp > $ts) | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | select(.input.skill == $skill or .input.command == $skill)' \
+            'select(.timestamp > $ts) | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | select(.input.skill == $skill or .input.command == $skill or (.input.skill | endswith(":" + $skill)) or (.input.command | endswith(":" + $skill) // false))' \
             "$transcript_path" 2>/dev/null)"
     else
-        # Check all skills
         result="$(jq -c \
             --arg skill "$skill_name" \
-            '.message.content[]? | select(.type == "tool_use" and .name == "Skill") | select(.input.skill == $skill or .input.command == $skill)' \
+            '.message.content[]? | select(.type == "tool_use" and .name == "Skill") | select(.input.skill == $skill or .input.command == $skill or (.input.skill | endswith(":" + $skill)) or (.input.command | endswith(":" + $skill) // false))' \
             "$transcript_path" 2>/dev/null)"
     fi
 

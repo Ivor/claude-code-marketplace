@@ -16,7 +16,7 @@ set -euo pipefail
 # CONFIGURATION
 # ============================================================================
 
-readonly CONFIG_FILE=".claude/hooks/skill-checker.json"
+readonly PROJECT_CONFIG_FILE=".claude/hooks/skill-checker.json"
 
 # ============================================================================
 # UTILITIES
@@ -198,19 +198,21 @@ is_skill_active() {
     local continuation_ts
     continuation_ts="$(find_continuation_timestamp "$transcript_path")"
 
-    # Build jq command to check for skill
-    local jq_cmd
+    local result
     if [[ -n "$continuation_ts" ]]; then
         # Check skills loaded after continuation
-        jq_cmd="jq -c --arg skill \"$skill_name\" --arg ts \"$continuation_ts\" 'select(.timestamp > \$ts) | .message.content[]? | select(.type == \"tool_use\" and .name == \"Skill\") | select(.input.skill == \$skill or .input.command == \$skill)' \"$transcript_path\" 2>/dev/null"
+        result="$(jq -c \
+            --arg skill "$skill_name" \
+            --arg ts "$continuation_ts" \
+            'select(.timestamp > $ts) | .message.content[]? | select(.type == "tool_use" and .name == "Skill") | select(.input.skill == $skill or .input.command == $skill)' \
+            "$transcript_path" 2>/dev/null)"
     else
         # Check all skills
-        jq_cmd="jq -c --arg skill \"$skill_name\" '.message.content[]? | select(.type == \"tool_use\" and .name == \"Skill\") | select(.input.skill == \$skill or .input.command == \$skill)' \"$transcript_path\" 2>/dev/null"
+        result="$(jq -c \
+            --arg skill "$skill_name" \
+            '.message.content[]? | select(.type == "tool_use" and .name == "Skill") | select(.input.skill == $skill or .input.command == $skill)' \
+            "$transcript_path" 2>/dev/null)"
     fi
-
-    # Execute and check if any output
-    local result
-    result="$(eval "$jq_cmd")"
 
     [[ -n "$result" ]]
 }
@@ -360,10 +362,16 @@ find_required_skills() {
 # ============================================================================
 
 main() {
-    # Debug log file
+    # Debug logging (opt-in via SKILL_CHECKER_DEBUG=1)
     local debug_log="/tmp/skill-checker-debug.log"
-    echo "=== SKILL CHECKER DEBUG ===" >> "$debug_log"
-    echo "Timestamp: $(date)" >> "$debug_log"
+    debug() {
+        if [[ "${SKILL_CHECKER_DEBUG:-0}" == "1" ]]; then
+            echo "$@" >> "$debug_log"
+        fi
+    }
+
+    debug "=== SKILL CHECKER DEBUG ==="
+    debug "Timestamp: $(date)"
 
     # Check for required dependencies
     if ! command_exists jq; then
@@ -377,8 +385,10 @@ main() {
     fi
 
     # Log raw input
-    echo "Raw hook data:" >> "$debug_log"
-    echo "$hook_data" | jq '.' >> "$debug_log" 2>&1
+    debug "Raw hook data:"
+    if [[ "${SKILL_CHECKER_DEBUG:-0}" == "1" ]]; then
+        echo "$hook_data" | jq '.' >> "$debug_log" 2>&1
+    fi
 
     # Parse hook data (fail open on error)
     if ! echo "$hook_data" | jq -e . >/dev/null 2>&1; then
@@ -395,37 +405,52 @@ main() {
     transcript_path="$(json_get "$hook_data" '.transcript_path')"
 
     # Debug: Log extracted values
-    echo "TOOL_NAME: $TOOL_NAME" >> "$debug_log"
-    echo "FILE_PATH: $FILE_PATH" >> "$debug_log"
-    echo "CWD: $CWD" >> "$debug_log"
-    echo "transcript_path: $transcript_path" >> "$debug_log"
+    debug "TOOL_NAME: $TOOL_NAME"
+    debug "FILE_PATH: $FILE_PATH"
+    debug "CWD: $CWD"
+    debug "transcript_path: $transcript_path"
 
     # Debug: Check for continuation
     local continuation_ts
     continuation_ts="$(find_continuation_timestamp "$transcript_path")"
     if [[ -n "$continuation_ts" ]]; then
-        echo "Continuation detected at: $continuation_ts" >> "$debug_log"
-        echo "Only checking skills loaded after this timestamp" >> "$debug_log"
+        debug "Continuation detected at: $continuation_ts"
+        debug "Only checking skills loaded after this timestamp"
     else
-        echo "No continuation detected, checking all skills" >> "$debug_log"
+        debug "No continuation detected, checking all skills"
     fi
 
-    # Check if config exists (fail open if not)
-    if [[ ! -f "$CONFIG_FILE" ]]; then
-        allow_with_warning "Config file not found at: ${CONFIG_FILE}
-Please create the config file to enable skill checking."
+    # Resolve config file location
+    # Priority: 1) Plugin data directory (per-project), 2) Project-level config
+    local config_file=""
+    if [[ -n "${CLAUDE_PLUGIN_DATA:-}" ]] && [[ -n "$CWD" ]]; then
+        local project_key
+        project_key="$(echo "$CWD" | sed 's|/|_|g' | sed 's|^_||')"
+        local plugin_data_config="${CLAUDE_PLUGIN_DATA}/projects/${project_key}/config.json"
+        if [[ -f "$plugin_data_config" ]]; then
+            config_file="$plugin_data_config"
+            debug "Using plugin data config: $config_file"
+        fi
+    fi
+    if [[ -z "$config_file" ]] && [[ -f "$PROJECT_CONFIG_FILE" ]]; then
+        config_file="$PROJECT_CONFIG_FILE"
+        debug "Using project config: $config_file"
+    fi
+    if [[ -z "$config_file" ]]; then
+        allow_with_warning "No skill-checker config found for this project.
+Run /skill-checker:setup-skill-checker to create one."
     fi
 
     # Read config (fail open on error)
     local config
-    if ! config="$(cat "$CONFIG_FILE")"; then
-        allow_with_warning "Failed to read config file: ${CONFIG_FILE}
+    if ! config="$(cat "$config_file")"; then
+        allow_with_warning "Failed to read config file: ${config_file}
 Check file permissions and try again."
     fi
 
     # Parse config (fail open on error)
     if ! echo "$config" | jq -e . >/dev/null 2>&1; then
-        allow_with_warning "Failed to parse config JSON in: ${CONFIG_FILE}
+        allow_with_warning "Failed to parse config JSON in: ${config_file}
 The JSON syntax may be invalid. Please validate the config file."
     fi
 
@@ -436,45 +461,45 @@ The JSON syntax may be invalid. Please validate the config file."
     done < <(find_required_skills "$config" "$TOOL_NAME" "$tool_input_json" "$FILE_PATH" "$CWD")
 
     # Debug: Log required skills
-    echo "Required skills count: ${#required_skills[@]}" >> "$debug_log"
+    debug "Required skills count: ${#required_skills[@]}"
     if [[ ${#required_skills[@]} -gt 0 ]]; then
-        echo "Required skills: ${required_skills[*]}" >> "$debug_log"
+        debug "Required skills: ${required_skills[*]}"
     else
-        echo "Required skills: (none)" >> "$debug_log"
+        debug "Required skills: (none)"
     fi
 
     # If no skills required, allow
     if [[ ${#required_skills[@]} -eq 0 ]]; then
-        echo "DECISION: No skills required, allowing tool use" >> "$debug_log"
+        debug "DECISION: No skills required, allowing tool use"
         allow_tool_use
     fi
 
     # Check if transcript is available (fail open if not)
     if [[ -z "$transcript_path" ]] || [[ ! -f "$transcript_path" ]]; then
-        echo "DECISION: Transcript not available, failing open (allowing tool use)" >> "$debug_log"
+        debug "DECISION: Transcript not available, failing open (allowing tool use)"
         allow_tool_use
     fi
 
     # Check which skills are missing
-    echo "Checking which skills are missing..." >> "$debug_log"
+    debug "Checking which skills are missing..."
     local missing_skills=()
     while IFS= read -r skill; do
-        echo "  - Skill '$skill' is missing" >> "$debug_log"
+        debug "  - Skill '$skill' is missing"
         [[ -n "$skill" ]] && missing_skills+=("$skill")
-    done < <(get_missing_skills "$transcript_path" "${required_skills[@]}" 2>> "$debug_log")
+    done < <(get_missing_skills "$transcript_path" "${required_skills[@]}" 2>/dev/null)
 
     # Debug: Log missing skills
-    echo "Missing skills count: ${#missing_skills[@]}" >> "$debug_log"
-    echo "Missing skills: ${missing_skills[*]}" >> "$debug_log"
+    debug "Missing skills count: ${#missing_skills[@]}"
+    debug "Missing skills: ${missing_skills[*]}"
 
     # If all skills are active, allow
     if [[ ${#missing_skills[@]} -eq 0 ]]; then
-        echo "DECISION: All required skills are active, allowing tool use" >> "$debug_log"
+        debug "DECISION: All required skills are active, allowing tool use"
         allow_tool_use
     fi
 
     # Deny with error message
-    echo "DECISION: Denying tool use due to missing skills" >> "$debug_log"
+    debug "DECISION: Denying tool use due to missing skills"
     deny_tool_use "${missing_skills[@]}"
 }
 

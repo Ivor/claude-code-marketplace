@@ -1,18 +1,22 @@
 {
-  "name": "skill-checker-marketplace",
-  "version": "2.1.0",
-  "description": "Skill enforcement hooks for Claude Code",
+  "name": "ivors-claude-code-marketplace",
+  "version": "3.0.0",
+  "description": "Ivor's collection of Claude Code plugins",
   "owner": {
     "name": "Ivor Paul",
     "email": "ivor@example.com"
   },
+  "strict": false,
   "plugins": [
     {
       "name": "skill-checker",
       "description": "Enforces skill activation before using specific tools",
       "source": "./plugins/skill-checker",
       "category": "workflow",
-      "version": "2.1.0",
+      "metadata": {
+        "version": "3.0.0",
+        "license": "MIT"
+      },
       "author": {
         "name": "Ivor Paul"
       }

@@ -12,26 +12,23 @@ The skill-checker hook intercepts tool usage and checks if required skills are l
 
 This prevents Claude from working on code without the proper context and best practices loaded.
 
-## ⚠️ Required Configuration File Location
+## Getting Started
 
-**CRITICAL**: After installing this plugin, you MUST create a configuration file at:
+After installing, just run in your project:
 
 ```
-<your-project-root>/.claude/hooks/skill-checker.json
+/skill-checker:setup-skill-checker
 ```
 
-This file defines which skills are required for your project. Each project needs its own config file because different projects have different requirements.
+Claude will ask what skills you use and create the configuration automatically. The config is stored in the plugin's data directory — nothing is added to your project.
 
-**Quick Setup**:
+You can also add individual checks anytime:
 
-```bash
-# Run these commands in your project root directory
-mkdir -p .claude/hooks
-cp ~/.claude/plugins/marketplaces/skill-checker-marketplace/plugins/skill-checker/config-templates/skill-checker.example.json .claude/hooks/skill-checker.json
-# Edit the file to customize for your project
+```
+/skill-checker:add-skill-check elixir-best-practices
 ```
 
-Without this file, the hook will not enforce any skill requirements (fail-open behavior for safety).
+Without configuration, the hook does nothing (fail-open behavior for safety).
 
 ## Installation
 
@@ -39,51 +36,30 @@ Without this file, the hook will not enforce any skill requirements (fail-open b
 
 ```bash
 # Add the skill-checker marketplace from GitHub
-claude plugin marketplace add https://github.com/Ivor/skill-checker
+claude plugin marketplace add https://github.com/Ivor/claude-code-marketplace
 
 # Install the skill-checker plugin
-claude plugin install skill-checker@skill-checker-marketplace
+claude plugin install skill-checker@ivors-claude-code-marketplace
 ```
 
 ### Step 2: Configure for Your Project
 
-**IMPORTANT**: This plugin requires project-specific configuration. After installation, you must create a `skill-checker.json` file in your project's `.claude/hooks/` directory.
+Run the setup skill in your project:
 
-**Quick Setup** - Run the setup command in your project:
-
-```bash
+```
 /skill-checker:setup-skill-checker
 ```
 
-Or manually:
-
-1. Create the hooks directory if it doesn't exist:
-
-   ```bash
-   mkdir -p .claude/hooks
-   ```
-
-2. Copy the example config from this plugin's `config-templates/` directory or create your own:
-
-   ```bash
-   cp ~/.claude/plugins/marketplaces/skill-checker-marketplace/plugins/skill-checker/config-templates/skill-checker.example.json .claude/hooks/skill-checker.json
-   ```
-
-3. Edit `.claude/hooks/skill-checker.json` to match your project's needs (see Configuration section below)
-
-**Keep Config Personal (Optional)**:
-
-If you don't want the configuration committed to your repository (e.g., for personal workflow preferences), add it to `.gitignore`:
-
-```bash
-echo ".claude/hooks/skill-checker.json" >> .gitignore
-```
-
-This allows you to use skill-checker without requiring other team members to have the same skills installed.
+Claude will walk you through creating your configuration.
 
 ## Configuration
 
-The `skill-checker.json` file defines mappings between tool usage patterns and required skills.
+The hook looks for config in two locations (in priority order):
+
+1. **Plugin data directory** (managed by skills, per-project) — `${CLAUDE_PLUGIN_DATA}/projects/<project-key>/config.json`
+2. **Project-level** (for team-shared configs) — `.claude/hooks/skill-checker.json`
+
+Use `/skill-checker:setup-skill-checker` to manage config automatically. The format is the same in both locations:
 
 ### Configuration Structure
 
@@ -103,7 +79,7 @@ The `skill-checker.json` file defines mappings between tool usage patterns and r
 ### Configuration Fields
 
 - **`skill`** (required): The name of the skill to require
-- **`tool_matcher`** (required): Regex pattern matching tool names (e.g., `"Write|Edit|MultiEdit"`)
+- **`tool_matcher`** (required): Regex pattern matching tool names (e.g., `"Write|Edit"`)
 - **`tool_input_matcher`** (optional): Regex pattern matching tool input JSON (e.g., `"mix test"`)
 - **`file_patterns`** (optional): Array of **regex patterns** matching file paths (e.g., `[".*\\.heex$", ".*/live/.*\\.ex$"]`)
 
@@ -116,12 +92,12 @@ The `skill-checker.json` file defines mappings between tool usage patterns and r
   "mappings": [
     {
       "skill": "liveview-templates",
-      "tool_matcher": "Write|Edit|MultiEdit",
+      "tool_matcher": "Write|Edit",
       "file_patterns": [".*\\.heex$", ".*/live/.*\\.ex$"]
     },
     {
       "skill": "elixir-best-practices",
-      "tool_matcher": "Write|Edit|MultiEdit",
+      "tool_matcher": "Write|Edit",
       "file_patterns": ["^lib/.*\\.ex$", ".*/test/.*\\.exs$"]
     },
     {
@@ -140,12 +116,12 @@ The `skill-checker.json` file defines mappings between tool usage patterns and r
   "mappings": [
     {
       "skill": "react-best-practices",
-      "tool_matcher": "Write|Edit|MultiEdit",
+      "tool_matcher": "Write|Edit",
       "file_patterns": ["^src/.*\\.(tsx|jsx)$"]
     },
     {
       "skill": "typescript-patterns",
-      "tool_matcher": "Write|Edit|MultiEdit",
+      "tool_matcher": "Write|Edit",
       "file_patterns": ["^src/.*\\.tsx?$"]
     }
   ]
@@ -206,32 +182,50 @@ The hook is designed to fail-open (allow tool use) if:
 
 This ensures Claude can continue working even if the hook encounters issues.
 
+## Available Skills
+
+This plugin provides the following skills:
+
+| Skill | Description |
+|-------|-------------|
+| `/skill-checker:setup-skill-checker` | Create or review the config file for your project |
+| `/skill-checker:add-skill-check` | Add a new skill enforcement mapping |
+| `/skill-checker:explain-skill-checker` | Learn how the plugin works |
+| `/skill-checker:explain-skill-check` | Understand an existing mapping in detail |
+
+## Debugging
+
+Debug logging is opt-in. To enable it:
+
+```bash
+export SKILL_CHECKER_DEBUG=1
+```
+
+Debug output goes to `/tmp/skill-checker-debug.log`:
+
+```bash
+tail -f /tmp/skill-checker-debug.log
+```
+
 ## Troubleshooting
 
 ### Hook Not Working
 
 1. **Check config file exists**:
-
    ```bash
    ls -la .claude/hooks/skill-checker.json
    ```
 
 2. **Validate JSON syntax**:
-
    ```bash
    jq '.' .claude/hooks/skill-checker.json
-   ```
-
-3. **Check debug logs**:
-   ```bash
-   tail -f /tmp/skill-checker-debug.log
    ```
 
 ### Skills Not Being Detected
 
 - Ensure skill names in your config exactly match the skill names used in your Skills directory
 - Check that skills are being loaded AFTER conversation continuation (if applicable)
-- Review debug logs to see what skills were detected
+- Enable debug logging and review the log
 
 ### Hook Allowing Tool Use When It Shouldn't
 
@@ -256,25 +250,17 @@ skill-checker/
 ├── hooks/
 │   ├── hooks.json           # Hook configuration
 │   └── skill-checker.sh     # Hook script
-├── commands/                # Slash commands
+├── skills/                  # Plugin skills
+│   ├── setup-skill-checker/
+│   ├── add-skill-check/
+│   ├── explain-skill-checker/
+│   └── explain-skill-check/
 ├── config-templates/
-│   └── skill-checker.example.json  # Example config
-└── README.md                # This file
+│   └── skill-checker.example.json
+├── CHANGELOG.md
+└── README.md
 ```
-
-### Testing
-
-To test the hook:
-
-1. Create a test project with `.claude/hooks/skill-checker.json`
-2. Configure a simple mapping (e.g., require a skill for editing .txt files)
-3. Try editing a file without loading the skill - it should be blocked
-4. Load the skill and retry - it should succeed
 
 ## License
 
 MIT
-
-## Support
-
-For issues, questions, or contributions, please open an issue on the plugin repository.

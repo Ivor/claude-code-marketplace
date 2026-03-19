@@ -2,7 +2,7 @@
   "mappings": [
     {
       "skill": "liveview-templates",
-      "tool_matcher": "Write|Edit|MultiEdit",
+      "tool_matcher": "Write|Edit",
       "file_patterns": [
         ".*\\.heex$",
         ".*/live/.*\\.ex$"
@@ -10,7 +10,7 @@
     },
     {
       "skill": "elixir-best-practices",
-      "tool_matcher": "Write|Edit|MultiEdit",
+      "tool_matcher": "Write|Edit",
       "file_patterns": [
         "^lib/.*\\.ex$",
         ".*/test/.*\\.exs$"

@@ -10,7 +10,8 @@ Help the user set up or review their skill-checker configuration. The config is 
 
 1. **Resolve the config location** by running:
    ```bash
-   PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||')
+   PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
+   [ -z "$PROJECT_KEY" ] && PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||')
    CONFIG_DIR="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}"
    CONFIG_FILE="${CONFIG_DIR}/config.json"
    echo "Config path: $CONFIG_FILE"

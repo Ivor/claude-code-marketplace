@@ -422,10 +422,17 @@ main() {
 
     # Resolve config file location
     # Priority: 1) Plugin data directory (per-project), 2) Project-level config
+    # Uses git remote URL as project key so worktrees share the same config
     local config_file=""
     if [[ -n "${CLAUDE_PLUGIN_DATA:-}" ]] && [[ -n "$CWD" ]]; then
         local project_key
-        project_key="$(echo "$CWD" | sed 's|/|_|g' | sed 's|^_||')"
+        local remote_url
+        remote_url="$(git -C "$CWD" remote get-url origin 2>/dev/null || true)"
+        if [[ -n "$remote_url" ]]; then
+            project_key="$(echo "$remote_url" | sed 's|[^a-zA-Z0-9]|_|g')"
+        else
+            project_key="$(echo "$CWD" | sed 's|/|_|g' | sed 's|^_||')"
+        fi
         local plugin_data_config="${CLAUDE_PLUGIN_DATA}/projects/${project_key}/config.json"
         if [[ -f "$plugin_data_config" ]]; then
             config_file="$plugin_data_config"

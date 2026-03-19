@@ -278,6 +278,7 @@ echo -e "\n${BOLD}8. Plugin data directory config${RESET}"
 
 # Set up plugin data directory with config
 PLUGIN_DATA_DIR="$TEST_DIR/plugin-data"
+# Test uses non-git temp dirs, so the hook falls back to CWD-based key
 PROJECT_KEY="$(echo "$TEST_DIR/project" | sed 's|/|_|g' | sed 's|^_||')"
 mkdir -p "$PLUGIN_DATA_DIR/projects/$PROJECT_KEY"
 cat > "$PLUGIN_DATA_DIR/projects/$PROJECT_KEY/config.json" << 'CONF'

@@ -10,6 +10,12 @@ Enforces skill activation before using specific tools. Ensures Claude loads requ
 
 **[View Plugin Documentation](./plugins/skill-checker/README.md)**
 
+### elixir-quick-context
+
+Instantly discover file dependencies and module relationships in Elixir projects by querying the compile manifest. Includes search, tree, and dependency lookup scripts — no code search needed.
+
+**[View Plugin Documentation](./plugins/elixir-quick-context/README.md)**
+
 ## Installation
 
 ### Add this marketplace to Claude Code:
@@ -26,6 +32,7 @@ claude plugin marketplace add /path/to/skill-checker
 
 ```bash
 claude plugin install skill-checker@ivors-claude-code-marketplace
+claude plugin install elixir-quick-context@ivors-claude-code-marketplace
 ```
 
 ## Plugin Structure
@@ -37,13 +44,17 @@ claude-code-marketplace/              # Marketplace root
 ├── .claude-plugin/
 │   └── marketplace.json              # Marketplace catalog
 └── plugins/
-    └── skill-checker/                # Individual plugin
+    ├── skill-checker/                # Skill enforcement hooks
+    │   ├── .claude-plugin/
+    │   │   └── plugin.json
+    │   ├── hooks/
+    │   ├── skills/
+    │   └── test/
+    └── elixir-quick-context/         # Elixir dependency explorer
         ├── .claude-plugin/
-        │   └── plugin.json           # Plugin manifest
-        ├── hooks/                    # Hook scripts and config
-        ├── skills/                   # Plugin skills
-        ├── config-templates/         # Template configs
-        └── test/                     # Test suite
+        │   └── plugin.json
+        ├── skills/
+        └── scripts/
 ```
 
 ## Contributing

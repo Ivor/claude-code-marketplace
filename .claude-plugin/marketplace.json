@@ -20,6 +20,19 @@
       "author": {
         "name": "Ivor Paul"
       }
+    },
+    {
+      "name": "elixir-quick-context",
+      "description": "Discover file dependencies and module relationships in Elixir projects via the compile manifest",
+      "source": "./plugins/elixir-quick-context",
+      "category": "elixir",
+      "metadata": {
+        "version": "1.0.0",
+        "license": "MIT"
+      },
+      "author": {
+        "name": "Ivor Paul"
+      }
     }
   ]
 }

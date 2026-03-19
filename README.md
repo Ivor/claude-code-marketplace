@@ -1,6 +1,6 @@
-# Skill Checker Marketplace
+# Ivor's Claude Code Marketplace
 
-A Claude Code plugin marketplace containing workflow automation tools.
+A collection of Claude Code plugins for workflow automation and best practices.
 
 ## Available Plugins
 
@@ -33,7 +33,7 @@ claude plugin install skill-checker@ivors-claude-code-marketplace
 This marketplace follows the official Claude Code plugin structure:
 
 ```
-skill-checker/                        # Marketplace root
+claude-code-marketplace/              # Marketplace root
 ├── .claude-plugin/
 │   └── marketplace.json              # Marketplace catalog
 └── plugins/
@@ -41,8 +41,9 @@ skill-checker/                        # Marketplace root
         ├── .claude-plugin/
         │   └── plugin.json           # Plugin manifest
         ├── hooks/                    # Hook scripts and config
-        ├── commands/                 # Slash commands
-        └── config-templates/         # Template configs
+        ├── skills/                   # Plugin skills
+        ├── config-templates/         # Template configs
+        └── test/                     # Test suite
 ```
 
 ## Contributing

@@ -18,21 +18,32 @@ Instantly discover file dependencies and module relationships in Elixir projects
 
 ## Installation
 
-### Add this marketplace to Claude Code:
+### Step 1: Add the marketplace
 
 ```bash
-# From GitHub (recommended)
-claude plugin marketplace add https://github.com/Ivor/claude-code-marketplace
-
-# Or from local directory (for development)
-claude plugin marketplace add /path/to/skill-checker
+claude plugin marketplace add Ivor/claude-code-marketplace
 ```
 
-### Install plugins:
+### Step 2: Install plugins
 
 ```bash
 claude plugin install skill-checker@ivors-claude-code-marketplace
 claude plugin install elixir-quick-context@ivors-claude-code-marketplace
+```
+
+### Step 3: Enable auto-update
+
+Third-party marketplaces don't auto-update by default. To receive updates automatically:
+
+1. Run `/plugin` in Claude Code
+2. Go to the **Marketplaces** tab
+3. Select `ivors-claude-code-marketplace`
+4. Enable **auto-update**
+
+Without this, you'll need to manually update plugins with:
+
+```bash
+claude plugin update skill-checker@ivors-claude-code-marketplace
 ```
 
 ## Plugin Structure

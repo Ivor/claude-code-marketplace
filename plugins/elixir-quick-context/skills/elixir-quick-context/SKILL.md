@@ -1,6 +1,6 @@
 ---
 name: elixir-quick-context
-description: This skill should be used at the start of any task involving Elixir/Phoenix source files to quickly discover project dependencies and related files. Use before reading code, before implementing changes, or when asked to work on a file or module. Runs a lightweight script against the Elixir compile manifest — no code search needed.
+description: Use at the start of any Elixir/Phoenix task to understand a module's dependencies and what depends on it, so you can plan changes that consider the broader scope and blast radius. Maps forward dependencies (what this module needs) and reverse dependencies (what breaks if this module changes) by querying the compile manifest — no code search needed.
 ---
 
 # Quick Project Context

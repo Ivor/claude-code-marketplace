@@ -104,14 +104,16 @@ deny_tool_use() {
 ${header}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+This is not an error. The skill-checker plugin requires you to load
+specific skills before working in this area. This ensures you have the
+right context and best practices loaded. Do not try to work around this.
+
 ${context_line}
 ${skills_text}
 
-You must load these skills BEFORE using this tool.
-
 ${action_text}
 
-After loading the required skills, you can proceed with the tool use.
+Once you activate the skill, this tool will be allowed.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
     # Output JSON response

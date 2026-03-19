@@ -13,6 +13,5 @@
     "automation",
     "workflow"
   ],
-  "hooks": "./hooks/hooks.json",
   "skills": "./skills"
 }

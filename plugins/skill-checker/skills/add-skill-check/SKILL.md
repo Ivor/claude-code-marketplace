@@ -7,42 +7,30 @@ argument-hint: [skill-name]
 
 Add a new skill check mapping for the current project.
 
-## Steps:
+## Resolve config path
 
-1. **Resolve the config path:**
-   ```bash
-   PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
-   if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
-   CONFIG_DIR="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}"
-   CONFIG_FILE="${CONFIG_DIR}/config.json"
-   ```
+```bash
+PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
+if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
+CONFIG_DIR="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}"
+CONFIG_FILE="${CONFIG_DIR}/config.json"
+if [ ! -f "$CONFIG_FILE" ]; then mkdir -p "$CONFIG_DIR" && echo '{"mappings":[]}' > "$CONFIG_FILE"; fi
+```
 
-2. **If config doesn't exist**, create it:
-   ```bash
-   mkdir -p "$CONFIG_DIR"
-   echo '{"mappings":[]}' > "$CONFIG_FILE"
-   ```
+## Build the mapping
 
-3. **Read the current config** and show existing mappings briefly
+Ask the user (or use the argument) for:
+- **Skill name** (short name, e.g. `elixir-quick-context`)
+- **Tool matcher** — `"Read|Write|Edit|Grep|Glob"`, `"Bash"`, `"mcp__.*"`, etc.
+- **File patterns** (optional) — regex against relative path from root, anchored with `^`:
+  `"^lib/.*\\.ex$"`, `"^test/.*\\.exs$"`, `"^src/.*\\.tsx$"`
+- **Tool input matcher** (optional) — regex against tool input: `"mix test"`, `"npm run"`
 
-4. **Build the new mapping** by asking the user (or using the argument):
-   - Which skill should be required?
-   - Which tools should trigger the check? Common patterns:
-     - `"Write|Edit"` — file editing
-     - `"Bash"` — shell commands
-     - `"mcp__.*"` — any MCP tool
-     - A specific tool name
-   - Should it only apply to certain files? Build regex patterns matched against the **relative path from project root** (anchor with `^`):
-     - `"^lib/.*\\.ex$"` — .ex files under lib/
-     - `"^test/.*\\.exs$"` — test files
-     - `"^lib/.*\\.heex$"` — HEEx templates under lib/
-     - `"^src/.*\\.(tsx|jsx)$"` — React components under src/
-   - Should it match specific tool input? (e.g., `"mix test"`, `"npm run"`)
+## Add to config
 
-5. **Add the mapping** to the config using jq:
-   ```bash
-   jq --argjson mapping '{"skill":"name","tool_matcher":"Write|Edit","file_patterns":["pattern"]}' \
-     '.mappings += [$mapping]' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
-   ```
+```bash
+jq --argjson mapping '{"skill":"name","tool_matcher":"Read|Write|Edit","file_patterns":["^lib/.*\\.ex$"]}' \
+  '.mappings += [$mapping]' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+```
 
-6. **Show the updated config** and confirm with the user
+Show the updated config and confirm.

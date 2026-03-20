@@ -1,6 +1,6 @@
 {
   "name": "elixir-quick-context",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Instantly discover file dependencies and module relationships in Elixir projects by querying the compile manifest. No code search needed.",
   "author": {
     "name": "Ivor Paul"

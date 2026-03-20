@@ -1,44 +1,29 @@
 ---
 name: explain-skill-check
-description: Explain a specific skill check mapping in detail — what it matches, what it blocks, with examples
+description: Show the current skill-checker config, explain mappings, and offer to modify or remove them
 user-invocable: true
 argument-hint: [skill-name]
 ---
 
-Explain an existing mapping in the skill-checker configuration in detail.
+Show and explain the skill-checker configuration for this project.
 
-## Steps:
+## Resolve config path
 
-1. **Read the config:**
-   ```bash
-   PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
-   if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
-   PLUGIN_CONFIG="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}/config.json"
-   PROJECT_CONFIG=".claude/hooks/skill-checker.json"
+```bash
+PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
+if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
+CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}/config.json"
+if [ -f "$CONFIG_FILE" ]; then cat "$CONFIG_FILE"; elif [ -f ".claude/hooks/skill-checker.json" ]; then cat ".claude/hooks/skill-checker.json"; else echo "No config found"; fi
+```
 
-   if [ -f "$PLUGIN_CONFIG" ]; then
-     cat "$PLUGIN_CONFIG"
-   elif [ -f "$PROJECT_CONFIG" ]; then
-     cat "$PROJECT_CONFIG"
-   fi
-   ```
+## What to explain
 
-2. **List all mappings** with a brief summary
+For each mapping, give concrete match/no-match examples:
+- "Triggers on: Read, Edit. Does NOT trigger on: Bash, Grep"
+- "Matches: `lib/accounts/user.ex`. Does NOT match: `config/runtime.exs`"
 
-3. **For the selected mapping** (matching the argument, or ask if not specified):
+## To remove a mapping
 
-   - **Skill**: Name and what it provides
-   - **Tool matcher**: Which tools trigger this — give concrete examples:
-     - "Triggers on: Write, Edit"
-     - "Does NOT trigger on: Read, Grep, Bash"
-   - **File patterns** (if present): Which files match — give concrete examples:
-     - "Matches: `lib/accounts/user.ex`, `lib/web/live/page_live.ex`"
-     - "Does NOT match: `config/runtime.exs`, `mix.exs`"
-   - **Tool input matcher** (if present): What commands trigger:
-     - "Matches: `mix test test/accounts_test.exs`"
-     - "Does NOT match: `mix compile`, `mix deps.get`"
-
-4. **Offer to modify or remove** the mapping if the user wants changes. To remove:
-   ```bash
-   jq --arg skill "skill-name" '.mappings |= map(select(.skill != $skill))' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
-   ```
+```bash
+jq --arg skill "skill-name" '.mappings |= map(select(.skill != $skill))' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+```

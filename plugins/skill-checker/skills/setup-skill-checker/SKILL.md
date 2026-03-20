@@ -4,46 +4,39 @@ description: Create or review the skill-checker configuration for the current pr
 user-invocable: true
 ---
 
-Help the user set up or review their skill-checker configuration. The config is stored in the plugin data directory, not in the project itself.
+Set up or review the skill-checker config. Config is stored in the plugin data directory, not in the project.
 
-## Steps:
+## Resolve config location
 
-1. **Resolve the config location** by running:
-   ```bash
-   PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
-   if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
-   CONFIG_DIR="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}"
-   CONFIG_FILE="${CONFIG_DIR}/config.json"
-   echo "Config path: $CONFIG_FILE"
-   echo "Exists: $(test -f "$CONFIG_FILE" && echo yes || echo no)"
-   ```
+```bash
+PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
+if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
+CONFIG_DIR="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}"
+CONFIG_FILE="${CONFIG_DIR}/config.json"
+echo "Config path: $CONFIG_FILE"
+echo "Exists: $(test -f "$CONFIG_FILE" && echo yes || echo no)"
+```
 
-2. **If config exists:**
-   - Read and display the current configuration
-   - Explain what each mapping does in plain language:
-     - Which skill is required
-     - Which tools trigger the check
-     - Which files (if any) are matched
-   - Ask if they want to add, modify, or remove mappings
+## If config exists
 
-3. **If config doesn't exist:**
-   - Ask the user what skills they have and what kinds of files they work with
-   - Based on their answers, build appropriate mappings
-   - Create the config directory and file:
-     ```bash
-     mkdir -p "$CONFIG_DIR"
-     ```
-   - Write the config as JSON with their mappings
-   - Show them the result and explain each mapping
+Read it, explain each mapping in plain language, and ask if changes are needed.
 
-## Configuration Format
+## If config doesn't exist
+
+Ask the user what skills they use and what file types they work with. Create the config:
+
+```bash
+mkdir -p "$CONFIG_DIR"
+```
+
+## Config format
 
 ```json
 {
   "mappings": [
     {
       "skill": "skill-name",
-      "tool_matcher": "Read|Write|Edit",
+      "tool_matcher": "Read|Write|Edit|Grep|Glob",
       "file_patterns": ["^lib/.*\\.ex$"],
       "tool_input_matcher": "optional-pattern"
     }
@@ -51,13 +44,7 @@ Help the user set up or review their skill-checker configuration. The config is 
 }
 ```
 
-- **skill**: Name of the skill to require (must match an installed skill exactly)
-- **tool_matcher**: Regex matching tool names — `Read`, `Write`, `Edit`, `Grep`, `Glob`, `Bash`, or any MCP tool. Use `|` for multiple: `"Read|Write|Edit|Grep|Glob"`
-- **file_patterns**: (optional) Regex patterns matched against the **relative path from project root**. Patterns should start with `^` to anchor to the project root (e.g., `"^lib/.*\\.ex$"`, `"^test/.*\\.exs$"`, `"^src/.*\\.tsx$"`)
-- **tool_input_matcher**: (optional) Regex matched against tool input JSON (e.g., `"mix test"` for Bash commands)
-
-## Notes
-
-- The config is stored per-project in the plugin data directory — it won't clutter the project
-- If a `.claude/hooks/skill-checker.json` exists in the project, it still works (backwards compatible) but the plugin data config takes priority
-- The hook fails open: if config is missing or broken, tool use is always allowed
+- **skill**: Skill name to require (short name, e.g. `elixir-quick-context` — the hook matches qualified plugin names automatically)
+- **tool_matcher**: Regex matching tool names. Use `|` for multiple.
+- **file_patterns**: Regex matched against **relative path from project root**. Anchor with `^`.
+- **tool_input_matcher**: Regex matched against tool input JSON (e.g. `"mix test"` for Bash)

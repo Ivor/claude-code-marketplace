@@ -14,7 +14,7 @@
       "source": "./plugins/skill-checker",
       "category": "workflow",
       "metadata": {
-        "version": "3.2.2",
+        "version": "3.3.0",
         "license": "MIT"
       },
       "author": {
@@ -27,7 +27,7 @@
       "source": "./plugins/elixir-quick-context",
       "category": "elixir",
       "metadata": {
-        "version": "1.1.1",
+        "version": "1.2.0",
         "license": "MIT"
       },
       "author": {

@@ -30,6 +30,47 @@ You can also add individual checks anytime:
 
 Without configuration, the hook does nothing (fail-open behavior for safety).
 
+## Example
+
+Say you have a `liveview-testing` skill and want Claude to always load it before running LiveView tests. Run:
+
+```
+/skill-checker:add-skill-check liveview-testing
+```
+
+This creates a config like:
+
+```json
+{
+  "mappings": [
+    {
+      "skill": "liveview-testing",
+      "tool_matcher": "Bash",
+      "tool_input_matcher": "mix test",
+      "file_patterns": ["^test/.*/live/.*\\.exs$"]
+    }
+  ]
+}
+```
+
+Now when Claude tries to run `mix test` on a LiveView test file, the hook blocks it:
+
+```
+SKILL REQUIRED BEFORE TOOL USE
+
+This is not an error. The skill-checker plugin requires you to load
+specific skills before working in this area.
+
+Required Skill: liveview-testing
+
+ACTION REQUIRED:
+→ Skill(skill: "liveview-testing")
+
+Once you activate the skill, this tool will be allowed.
+```
+
+Claude loads the skill, retries, and proceeds — with the right context loaded.
+
 ## Installation
 
 ### Step 1: Add the Marketplace and Install the Plugin
@@ -188,10 +229,9 @@ This plugin provides the following skills:
 
 | Skill | Description |
 |-------|-------------|
-| `/skill-checker:setup-skill-checker` | Create or review the config file for your project |
+| `/skill-checker:setup-skill-checker` | Create or review the config for your project |
 | `/skill-checker:add-skill-check` | Add a new skill enforcement mapping |
-| `/skill-checker:explain-skill-checker` | Learn how the plugin works |
-| `/skill-checker:explain-skill-check` | Understand an existing mapping in detail |
+| `/skill-checker:explain-skill-check` | Show, explain, modify, or remove existing mappings |
 
 ## Debugging
 

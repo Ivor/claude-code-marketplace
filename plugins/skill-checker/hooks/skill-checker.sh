@@ -292,6 +292,16 @@ mapping_matches() {
     local tool_input_json="$3"
     local file_path="$4"
     local cwd="$5"
+    local agent_type="${6:-}"
+
+    # Check agent_type_matcher if specified
+    local agent_type_matcher
+    agent_type_matcher="$(json_get "$mapping" '.agent_type_matcher')"
+    if [[ -n "$agent_type_matcher" ]]; then
+        # If mapping requires a specific agent type but we're not in that agent type, skip
+        [[ -z "$agent_type" ]] && return 1
+        matches_regex "$agent_type" "$agent_type_matcher" || return 1
+    fi
 
     # Extract mapping fields
     local tool_matcher
@@ -336,6 +346,7 @@ find_required_skills() {
     local tool_input_json="$3"
     local file_path="$4"
     local cwd="$5"
+    local agent_type="${6:-}"
 
     local mappings_json
     mappings_json="$(json_get_array "$config" '.mappings')"
@@ -344,7 +355,7 @@ find_required_skills() {
 
     # Check each mapping
     while IFS= read -r mapping; do
-        if mapping_matches "$mapping" "$tool_name" "$tool_input_json" "$file_path" "$cwd"; then
+        if mapping_matches "$mapping" "$tool_name" "$tool_input_json" "$file_path" "$cwd" "$agent_type"; then
             local skill
             skill="$(json_get "$mapping" '.skill')"
             [[ -n "$skill" ]] && required_skills+=("$skill")
@@ -405,9 +416,14 @@ main() {
     local transcript_path
     transcript_path="$(json_get "$hook_data" '.transcript_path')"
 
-    # If running inside a subagent, resolve the subagent's own transcript
+    # Extract agent context
     local agent_id
     agent_id="$(json_get "$hook_data" '.agent_id')"
+    local agent_type
+    agent_type="$(json_get "$hook_data" '.agent_type')"
+    debug "agent_type: $agent_type"
+
+    # If running inside a subagent, resolve the subagent's own transcript
     local subagent_transcript=""
     if [[ -n "$agent_id" ]]; then
         local session_dir="${transcript_path%.jsonl}"
@@ -480,7 +496,7 @@ The JSON syntax may be invalid. Please validate the config file."
     local required_skills=()
     while IFS= read -r skill; do
         [[ -n "$skill" ]] && required_skills+=("$skill")
-    done < <(find_required_skills "$config" "$TOOL_NAME" "$tool_input_json" "$FILE_PATH" "$CWD")
+    done < <(find_required_skills "$config" "$TOOL_NAME" "$tool_input_json" "$FILE_PATH" "$CWD" "$agent_type")
 
     # Debug: Log required skills
     debug "Required skills count: ${#required_skills[@]}"

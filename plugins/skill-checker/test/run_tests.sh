@@ -47,34 +47,32 @@ build_hook_input() {
     local tool_input="$2"
     local transcript_path="${3:-}"
     local agent_id="${4:-}"
+    local agent_type="${5:-}"
+
+    local args=(
+        --arg tool_name "$tool_name"
+        --argjson tool_input "$tool_input"
+        --arg cwd "$TEST_DIR/project"
+        --arg transcript_path "$transcript_path"
+    )
+
+    local filter='{tool_name: $tool_name, tool_input: $tool_input, cwd: $cwd, transcript_path: $transcript_path}'
 
     if [[ -n "$agent_id" ]]; then
-        jq -n \
-            --arg tool_name "$tool_name" \
-            --argjson tool_input "$tool_input" \
-            --arg cwd "$TEST_DIR/project" \
-            --arg transcript_path "$transcript_path" \
-            --arg agent_id "$agent_id" \
-            '{
-                tool_name: $tool_name,
-                tool_input: $tool_input,
-                cwd: $cwd,
-                transcript_path: $transcript_path,
-                agent_id: $agent_id
-            }'
-    else
-        jq -n \
-            --arg tool_name "$tool_name" \
-            --argjson tool_input "$tool_input" \
-            --arg cwd "$TEST_DIR/project" \
-            --arg transcript_path "$transcript_path" \
-            '{
-                tool_name: $tool_name,
-                tool_input: $tool_input,
-                cwd: $cwd,
-                transcript_path: $transcript_path
-            }'
+        args+=(--arg agent_id "$agent_id")
+        filter='{tool_name: $tool_name, tool_input: $tool_input, cwd: $cwd, transcript_path: $transcript_path, agent_id: $agent_id}'
     fi
+
+    if [[ -n "$agent_type" ]]; then
+        args+=(--arg agent_type "$agent_type")
+        if [[ -n "$agent_id" ]]; then
+            filter='{tool_name: $tool_name, tool_input: $tool_input, cwd: $cwd, transcript_path: $transcript_path, agent_id: $agent_id, agent_type: $agent_type}'
+        else
+            filter='{tool_name: $tool_name, tool_input: $tool_input, cwd: $cwd, transcript_path: $transcript_path, agent_type: $agent_type}'
+        fi
+    fi
+
+    jq -n "${args[@]}" "$filter"
 }
 
 # Run the hook and capture output + exit code
@@ -441,6 +439,68 @@ other_plugin_transcript="$(create_transcript "$(jq -nc '{timestamp:"2026-01-01T1
 input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$other_plugin_transcript")"
 output="$(run_hook "$input")"
 assert_decision "Different plugin prefix still matches → allow" "allow" "$(get_decision "$output")"
+
+# --- Test Group 11: agent_type_matcher ---
+echo -e "\n${BOLD}11. Agent type matching${RESET}"
+
+create_config '{
+  "mappings": [
+    {
+      "skill": "elixir-quick-context",
+      "agent_type_matcher": "Explore",
+      "tool_matcher": ".*"
+    }
+  ]
+}'
+
+# Explore agent, skill missing → deny
+transcript_path="$(create_transcript '{}')"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$transcript_path" "" "Explore")"
+output="$(run_hook "$input")"
+assert_decision "Explore agent, skill missing → deny" "deny" "$(get_decision "$output")"
+
+# Explore agent, skill present → allow
+transcript_path="$(create_transcript "$(skill_entry "elixir-quick-context")")"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$transcript_path" "" "Explore")"
+output="$(run_hook "$input")"
+assert_decision "Explore agent, skill loaded → allow" "allow" "$(get_decision "$output")"
+
+# Main conversation (no agent_type), should NOT match → allow
+transcript_path="$(create_transcript '{}')"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$transcript_path")"
+output="$(run_hook "$input")"
+assert_decision "Main conversation, agent_type_matcher mapping → allow (no match)" "allow" "$(get_decision "$output")"
+
+# Different agent type (general-purpose), should NOT match → allow
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$transcript_path" "" "general-purpose")"
+output="$(run_hook "$input")"
+assert_decision "general-purpose agent, Explore matcher → allow (no match)" "allow" "$(get_decision "$output")"
+
+# Explore agent with Bash tool (tool_matcher: .* should catch all tools)
+transcript_path="$(create_transcript '{}')"
+input="$(build_hook_input "Bash" '{"command": "ls"}' "$transcript_path" "" "Explore")"
+output="$(run_hook "$input")"
+assert_decision "Explore agent, Bash tool, skill missing → deny" "deny" "$(get_decision "$output")"
+
+# Regex agent_type_matcher (e.g., "Explore|Plan")
+create_config '{
+  "mappings": [
+    {
+      "skill": "elixir-quick-context",
+      "agent_type_matcher": "Explore|Plan",
+      "tool_matcher": ".*"
+    }
+  ]
+}'
+
+transcript_path="$(create_transcript '{}')"
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$transcript_path" "" "Plan")"
+output="$(run_hook "$input")"
+assert_decision "Plan agent matches Explore|Plan → deny" "deny" "$(get_decision "$output")"
+
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$transcript_path" "" "general-purpose")"
+output="$(run_hook "$input")"
+assert_decision "general-purpose agent doesn't match Explore|Plan → allow" "allow" "$(get_decision "$output")"
 
 # ============================================================================
 # RESULTS

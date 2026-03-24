@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.4.0] - 2026-03-24
+
+### Added
+- `agent_type_matcher` field for mappings — require skills for specific agent types (e.g., Explore, Plan, general-purpose)
+- Example in config template showing `agent_type_matcher` usage
+
 ## [3.0.0] - 2026-03-19
 
 ### Breaking Changes

@@ -24,6 +24,12 @@
     {
       "skill": "tidewave",
       "tool_matcher": "mcp__tidewave__get_logs"
+    },
+    {
+      "_comment": "Require a skill for all tool calls inside an Explore agent",
+      "skill": "elixir-quick-context",
+      "agent_type_matcher": "Explore",
+      "tool_matcher": ".*"
     }
   ]
 }

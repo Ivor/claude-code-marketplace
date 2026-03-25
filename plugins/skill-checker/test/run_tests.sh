@@ -502,6 +502,35 @@ input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.e
 output="$(run_hook "$input")"
 assert_decision "general-purpose agent doesn't match Explore|Plan → allow" "allow" "$(get_decision "$output")"
 
+# --- Test Group 12: Skill tool always allowed ---
+echo -e "\n${BOLD}12. Skill tool escape hatch${RESET}"
+
+create_config '{
+  "mappings": [
+    {
+      "skill": "elixir-quick-context",
+      "agent_type_matcher": "Explore",
+      "tool_matcher": ".*"
+    }
+  ]
+}'
+
+# Skill tool should always be allowed, even when agent_type matches and skill is missing
+transcript_path="$(create_transcript '{}')"
+input="$(build_hook_input "Skill" '{"skill": "elixir-quick-context"}' "$transcript_path" "" "Explore")"
+output="$(run_hook "$input")"
+assert_decision "Skill tool in Explore agent, skill missing → allow (escape hatch)" "allow" "$(get_decision "$output")"
+
+# Skill tool should be allowed in main conversation too
+input="$(build_hook_input "Skill" '{"skill": "something-else"}' "$transcript_path")"
+output="$(run_hook "$input")"
+assert_decision "Skill tool in main conversation → allow" "allow" "$(get_decision "$output")"
+
+# Non-Skill tool should still be denied
+input="$(build_hook_input "Read" '{"file_path": "'"$TEST_DIR/project"'/lib/foo.ex"}' "$transcript_path" "" "Explore")"
+output="$(run_hook "$input")"
+assert_decision "Read tool in Explore agent, skill missing → deny" "deny" "$(get_decision "$output")"
+
 # ============================================================================
 # RESULTS
 # ============================================================================

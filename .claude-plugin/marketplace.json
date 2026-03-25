@@ -1,6 +1,6 @@
 {
   "name": "ivors-claude-code-marketplace",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Ivor's collection of Claude Code plugins",
   "owner": {
     "name": "Ivor Paul",
@@ -14,7 +14,7 @@
       "source": "./plugins/skill-checker",
       "category": "workflow",
       "metadata": {
-        "version": "3.4.0",
+        "version": "3.4.1",
         "license": "MIT"
       },
       "author": {

@@ -1,5 +1,10 @@
 # Changelog
 
+## [3.4.1] - 2026-03-25
+
+### Fixed
+- Skill tool is now always allowed (never blocked by the hook) — prevents deadlock where an agent can't load a required skill because loading it is itself blocked by `tool_matcher: ".*"`
+
 ## [3.4.0] - 2026-03-24
 
 ### Added

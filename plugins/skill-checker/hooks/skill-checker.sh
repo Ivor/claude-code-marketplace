@@ -409,6 +409,14 @@ main() {
 
     # Extract tool information
     TOOL_NAME="$(json_get "$hook_data" '.tool_name')"
+
+    # Never block the Skill tool — it's the escape hatch for loading required skills.
+    # Blocking it creates an unresolvable deadlock.
+    if [[ "$TOOL_NAME" == "Skill" ]]; then
+        debug "DECISION: Skill tool always allowed (escape hatch)"
+        allow_tool_use
+    fi
+
     local tool_input_json
     tool_input_json="$(echo "$hook_data" | jq -c '.tool_input // {}')"
     FILE_PATH="$(json_get "$tool_input_json" '.file_path')"

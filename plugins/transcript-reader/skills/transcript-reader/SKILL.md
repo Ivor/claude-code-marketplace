@@ -1,6 +1,6 @@
 ---
 name: transcript-reader
-description: Find, read, and analyze Claude Code session transcripts. Use when the user asks about past sessions, wants to review what happened in a conversation, search for specific interactions, or reflect on how Claude performed. Understands the full transcript JSONL format including sub-agent conversations.
+description: MUST activate before reading any .jsonl transcript file. Claude Code transcripts are JSONL where each line is 100K+ characters — the Read tool will fail. This skill provides a single-command analysis script that extracts everything (messages, tools, tokens, sub-agents) in one pass. Always invoke this skill FIRST when the user asks about past sessions, transcripts, or Claude's performance in prior conversations.
 ---
 
 # Transcript Reader

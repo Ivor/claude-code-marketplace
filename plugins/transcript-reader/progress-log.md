@@ -59,3 +59,61 @@
 - Reduce reference material — move format docs to the bottom as an appendix
 - Make the "NEVER Read JSONL" rule louder and explain WHY (lines are 100K+ chars)
 - Add instruction: "Run this script FIRST, then answer from its output"
+
+### Iteration 3 — Script-first layout (REVERTED — regression)
+- **Session ID**: `a5c3ecda-3ae3-435b-aef3-043993467c2a`
+- **Duration**: 166,390ms
+- **Tool calls**: 15 total (2 main + 13 sub-agent) — WORSE than iteration 2
+- **Score**: 15 (regression from 8)
+- **Reverted**: Skill reverted to iteration 2 version
+
+**Root cause:** Same as iterations 1-2 — Skill tool was never invoked. Restructuring the SKILL.md body had no effect because Claude never loaded it.
+
+### Iteration 4 — Standalone script + CLAUDE_PLUGIN_ROOT (REVERTED — regression)
+- **Session ID**: `c4575da8-6097-47b4-b4f4-dab24ee217e4`
+- **Duration**: 160,510ms
+- **Tool calls**: 17 total (3 main + 14 sub-agent) — WORSE
+- **Score**: 17 (regression)
+- **Reverted**: Skill reverted to iteration 2 version
+
+**Key discovery:** The Skill tool was NEVER invoked in any iteration. The full SKILL.md content is only loaded when the Skill tool is called. Claude only sees the short `description` field in the skills list. All the rules, scripts, and instructions inside the skill body were invisible.
+
+### Iteration 5 — Compelling description forces Skill activation (BREAKTHROUGH)
+- **Session ID**: `60d40917-127b-4904-8152-1ab7bc0d6ed0`
+- **Duration**: 33,797ms (87% faster than baseline)
+- **Turns**: 4
+- **Tool calls**: 2 total (1 Skill, 1 Bash) — **89% reduction from baseline**
+- **Result quality**: Excellent — accurate, well-structured, correct analysis
+- **Score**: 2 tool calls
+
+**What changed:** Rewrote the `description` field from passive ("Use when the user asks about...") to active/urgent ("MUST activate before reading any .jsonl transcript file. Read tool will fail. This skill provides a single-command analysis script."). Claude's thinking now shows: "I have a skill for reading transcripts - let me use that first."
+
+**Flow:** Skill invocation → loaded full SKILL.md → ran `analyze_transcript.py` via CLAUDE_PLUGIN_ROOT → wrote analysis from script output. Perfect.
+
+### Iteration 5b — Complex transcript with sub-agents
+- **Session ID**: `2c4e281c-b6e0-4c99-b19e-a5cff9e3b5a0`
+- **Duration**: 53,211ms
+- **Turns**: 6
+- **Tool calls**: 4 total (1 Skill, 3 Bash)
+- **Result quality**: Outstanding — detailed sub-agent analysis, identified failure patterns, gave recommendations
+- **Score**: 4 tool calls
+
+**Flow:** Skill → main analysis script → 2 sub-agent deep-dive scripts. Exactly the right amount of work.
+
+## Score Summary
+
+| Iteration | Tool Calls | Duration | Notes |
+|-----------|-----------|----------|-------|
+| 1 (baseline) | 19 | 265s | Sub-agent thrashing, Read failures |
+| 2 | 8 | 99s | No sub-agent, but 6 sequential scripts |
+| 3 (reverted) | 15 | 166s | Regression — Skill never invoked |
+| 4 (reverted) | 17 | 161s | Regression — Skill never invoked |
+| **5 (final)** | **2** | **34s** | **Skill invoked, one-shot script** |
+| 5b (sub-agents) | 4 | 53s | Skill + main script + 2 sub-agent scripts |
+
+## Key Learnings
+
+1. **Skill descriptions are the ONLY thing Claude sees by default** — the full SKILL.md body is invisible until the Skill tool is invoked. Write descriptions that compel activation.
+2. **"MUST activate" + explaining WHY** in the description is far more effective than rules inside the skill body.
+3. **Standalone scripts via CLAUDE_PLUGIN_ROOT** eliminate the temptation to use Read/write custom scripts — Claude just runs the provided script.
+4. **A single comprehensive script** is better than many small snippets — it gives Claude everything it needs in one tool call.

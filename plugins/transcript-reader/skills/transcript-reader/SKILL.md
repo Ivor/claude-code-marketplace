@@ -5,71 +5,22 @@ description: Find, read, and analyze Claude Code session transcripts. Use when t
 
 # Claude Code Transcript Reader
 
-You are an expert at finding and analyzing Claude Code session transcripts.
+## How to Analyze a Transcript
 
-## Critical Rules
-
-1. **NEVER use the Read tool on JSONL transcript files.** Each line in a JSONL file can be 100K+ characters (a single JSON object per line). The Read tool will hit token limits and fail. Always use `Bash` with `python3` or `jq` to parse JSONL files.
-2. **NEVER spawn sub-agents (Agent tool) for transcript analysis.** Do all analysis directly — the python3 scripts below are self-contained and efficient.
-3. **Use the fewest possible Bash calls.** The comprehensive script below extracts everything in one pass. Only run additional scripts if you need to drill into specific details.
-
-## Directory Structure
-
-```
-~/.claude/
-├── projects/                                  # Per-project session data
-│   └── <encoded-project-path>/                # Path with / replaced by -, e.g. -Users-alice-code-myproject
-│       ├── sessions-index.json                # Session metadata index (when present)
-│       ├── <session-uuid>.jsonl               # Main session transcript
-│       └── <session-uuid>/                    # Session artifacts
-│           ├── subagents/                     # Sub-agent transcripts
-│           │   ├── agent-<agentId>.jsonl      # Sub-agent conversation (same JSONL format)
-│           │   └── agent-<agentId>.meta.json  # {"agentType": "Explore|general-purpose|Plan|...", "description": "..."}
-│           └── tool-results/                  # Cached tool results
-└── history.jsonl                              # Global history (very large, avoid reading entirely)
-```
-
-## Finding Sessions
-
-### By keyword — search sessions-index.json
-
-```bash
-# Find project directories
-ls ~/.claude/projects/ | grep "<keyword>"
-
-# Read sessions index (this is a regular JSON file — Read tool is OK here)
-cat ~/.claude/projects/<project-dir>/sessions-index.json | python3 -c "
-import sys, json
-idx = json.load(sys.stdin)
-for e in idx.get('entries', []):
-    print(f\"{e['created'][:10]}  {e['sessionId'][:8]}...  branch={e.get('gitBranch','')}  msgs={e.get('messageCount','')}  {e.get('firstPrompt','')[:100]}\")
-"
-```
-
-### By grep — search across all transcripts in a project
-
-```bash
-grep -l "keyword" ~/.claude/projects/<project-dir>/*.jsonl
-```
-
-## Comprehensive Session Analysis (ONE script)
-
-This is your primary tool. Run this FIRST for any transcript analysis — it extracts everything in a single pass:
+When given a transcript path (or after finding one), run this **single Bash command** as your FIRST action. Do NOT read the file with the Read tool — JSONL lines are 100K+ characters and will fail. This script extracts everything in one pass:
 
 ```bash
 python3 -c "
 import json, sys, collections, os, glob
 
-f = '<TRANSCRIPT_PATH>'  # Replace with actual path
+f = sys.argv[1]
 session_dir = f.replace('.jsonl', '')
 
-# Parse main transcript
 msgs = []
 with open(f) as fh:
     for line in fh:
         msgs.append(json.loads(line))
 
-# Basic counts
 type_counts = collections.Counter()
 tool_counts = collections.Counter()
 user_messages = []
@@ -105,11 +56,10 @@ for m in msgs:
             elif block.get('type') == 'text' and block.get('text', '').strip():
                 assistant_texts.append((m.get('timestamp', ''), block['text']))
             elif block.get('type') == 'thinking':
-                thinking_blocks.append(block.get('thinking', '')[:300])
+                thinking_blocks.append(block.get('thinking', '')[:500])
     elif t == 'system' and sub == 'turn_duration':
         durations.append(m.get('durationMs', 0))
 
-# Sub-agents
 subagent_dir = os.path.join(session_dir, 'subagents')
 subagents = []
 if os.path.isdir(subagent_dir):
@@ -133,113 +83,115 @@ if os.path.isdir(subagent_dir):
                     elif am.get('type') == 'user' and isinstance(am.get('message', {}).get('content'), str):
                         agent_user_prompts.append(am['message']['content'][:200])
         subagents.append({
-            'id': agent_id,
-            'type': meta.get('agentType', '?'),
-            'description': meta.get('description', ''),
-            'messages': agent_msgs,
+            'id': agent_id, 'type': meta.get('agentType', '?'),
+            'description': meta.get('description', ''), 'messages': agent_msgs,
             'tools': dict(agent_tool_counts.most_common()),
             'prompt': agent_user_prompts[0] if agent_user_prompts else ''
         })
 
-# Output report
 print('=' * 60)
 print('SESSION ANALYSIS')
 print('=' * 60)
+print(f\"\"\"
+Session ID: {msgs[0].get('sessionId', '?') if msgs else '?'}
+Branch: {msgs[0].get('gitBranch', '?') if msgs else '?'}
+Version: {msgs[0].get('version', '?') if msgs else '?'}
+Models: {', '.join(models) if models else '?'}
+Total JSONL lines: {len(msgs)}
+Total duration: {sum(durations):,}ms ({sum(durations)/1000:.1f}s)
+Tokens — Input: {total_in:,}  Output: {total_out:,}  Cache: {total_cache:,}
+\"\"\")
 
-print(f'\nSession ID: {msgs[0].get(\"sessionId\", \"?\") if msgs else \"?\"}')
-print(f'Branch: {msgs[0].get(\"gitBranch\", \"?\") if msgs else \"?\"}')
-print(f'Version: {msgs[0].get(\"version\", \"?\") if msgs else \"?\"}')
-print(f'Models: {\", \".join(models) if models else \"?\"}')
-print(f'Total messages (JSONL lines): {len(msgs)}')
-print(f'Turn durations: {durations}ms') if durations else None
-print(f'Total duration: {sum(durations):,}ms ({sum(durations)/1000:.1f}s)') if durations else None
-
-print(f'\n--- Message Types ---')
+print('--- Message Types ---')
 for k, v in type_counts.most_common():
     print(f'  {v:4d}  {k}')
 
-print(f'\n--- Tool Usage ---')
-total_tools = sum(tool_counts.values())
-print(f'  Total tool calls: {total_tools}')
+print(f'\n--- Tool Usage ({sum(tool_counts.values())} calls) ---')
 for name, count in tool_counts.most_common():
     print(f'  {count:4d}  {name}')
 
-print(f'\n--- Token Usage ---')
-print(f'  Input: {total_in:,}  Output: {total_out:,}  Cache reads: {total_cache:,}')
-
 print(f'\n--- User Messages ({len(user_messages)}) ---')
 for ts, content in user_messages:
-    print(f'  [{ts[:19]}] {content[:200]}')
+    print(f'  [{ts[:19]}] {content[:300]}')
 
 print(f'\n--- Assistant Responses ({len(assistant_texts)}) ---')
 for ts, text in assistant_texts:
-    print(f'  [{ts[:19]}] {text[:300]}')
+    print(f'  [{ts[:19]}] {text[:400]}')
     print()
 
 if errors:
-    print(f'\n--- Errors ({len(errors)}) ---')
+    print(f'--- Errors ({len(errors)}) ---')
     for ts, err in errors:
         print(f'  [{ts[:19]}] {err}')
 
 if thinking_blocks:
-    print(f'\n--- Thinking Blocks ({len(thinking_blocks)}) ---')
+    print(f'--- Thinking Blocks ({len(thinking_blocks)}) ---')
     for i, t in enumerate(thinking_blocks):
         print(f'  [{i+1}] {t}')
         print()
 
-print(f'\n--- Sub-agents ({len(subagents)}) ---')
+print(f'--- Sub-agents ({len(subagents)}) ---')
 if not subagents:
     print('  None')
 else:
     for sa in subagents:
-        print(f'  Agent: {sa[\"id\"]}')
-        print(f'    Type: {sa[\"type\"]}')
-        print(f'    Description: {sa[\"description\"]}')
-        print(f'    Messages: {sa[\"messages\"]}')
-        print(f'    Prompt: {sa[\"prompt\"][:200]}')
-        print(f'    Tools: {sa[\"tools\"]}')
+        print(f'  {sa[\"id\"]}  type={sa[\"type\"]}  msgs={sa[\"messages\"]}  tools={sa[\"tools\"]}')
+        if sa['description']: print(f'    desc: {sa[\"description\"]}')
+        if sa['prompt']: print(f'    prompt: {sa[\"prompt\"][:200]}')
         print()
 
+# Session outcome
+last = msgs[-1] if msgs else {}
+lt = last.get('type','?')
+if lt == 'last-prompt': outcome = 'Normal end (last-prompt marker)'
+elif lt == 'user': outcome = 'Interrupted mid-turn (ended on tool result, no assistant response followed)'
+elif lt == 'assistant' and last.get('message',{}).get('stop_reason') == 'end_turn': outcome = 'Completed (assistant end_turn)'
+elif lt == 'system' and last.get('subtype') == 'turn_duration': outcome = 'Completed (turn_duration marker)'
+else: outcome = f'Unknown ({lt})'
+print(f'\n--- Session Outcome ---')
+print(f'  Last message type: {lt}')
+print(f'  Outcome: {outcome}')
 print('=' * 60)
-"
+" /path/to/transcript.jsonl
 ```
 
-**Replace `<TRANSCRIPT_PATH>` with the actual `.jsonl` file path before running.**
+**After running this script, you have all the data needed to write your analysis.** Only run additional scripts if the user asks for specific deep-dive details.
 
-## Drilling Deeper
+## Finding Sessions
 
-After running the comprehensive script, you may need to investigate specific details:
+### If the user provides a file path
+Skip straight to the analysis script above.
 
-### Read a specific user message in full
+### If the user asks to find a session by keyword
+
+**Step 1** — Locate the project directory:
 ```bash
-python3 -c "
-import json
-with open('<TRANSCRIPT_PATH>') as f:
-    for i, line in enumerate(f):
-        d = json.loads(line)
-        if d.get('type') == 'user' and isinstance(d.get('message',{}).get('content'), str):
-            if '<KEYWORD>' in d['message']['content'].lower():
-                print(f'Line {i}: {d[\"message\"][\"content\"]}')"
+ls ~/.claude/projects/ | grep "<keyword>"
 ```
 
-### Read a specific assistant response in full
+**Step 2** — Check sessions-index.json (fastest):
 ```bash
 python3 -c "
-import json
-with open('<TRANSCRIPT_PATH>') as f:
-    for i, line in enumerate(f):
-        d = json.loads(line)
-        if d.get('type') == 'assistant':
-            for block in d.get('message',{}).get('content',[]):
-                if block.get('type') == 'text' and '<KEYWORD>' in block.get('text','').lower():
-                    print(f'Line {i}: {block[\"text\"]}')"
+import json, sys
+with open(sys.argv[1]) as f:
+    idx = json.load(f)
+for e in idx.get('entries', []):
+    print(f\"{e.get('created','')[:10]}  {e['sessionId'][:8]}...  branch={e.get('gitBranch','')}  msgs={e.get('messageCount','')}  {e.get('firstPrompt','')[:120]}\")
+" ~/.claude/projects/<project-dir>/sessions-index.json
 ```
 
-### Read thinking blocks in full
+**Step 3** — If no index, grep across transcripts:
+```bash
+grep -l "keyword" ~/.claude/projects/<project-dir>/*.jsonl
+```
+
+## Deep-Dive Scripts (only when needed)
+
+### Full thinking blocks
 ```bash
 python3 -c "
-import json
-with open('<TRANSCRIPT_PATH>') as f:
+import json, sys
+with open(sys.argv[1]) as f:
     for i, line in enumerate(f):
         d = json.loads(line)
         if d.get('type') == 'assistant':
@@ -247,57 +199,83 @@ with open('<TRANSCRIPT_PATH>') as f:
                 if block.get('type') == 'thinking':
                     print(f'=== Line {i} ===')
                     print(block['thinking'])
-                    print()"
+                    print()
+" /path/to/transcript.jsonl
 ```
 
-### Check tool call details (inputs/outputs for a specific tool)
+### Full text of a specific tool call
 ```bash
 python3 -c "
-import json
-TOOL = '<TOOL_NAME>'  # e.g. 'Bash', 'Read', 'Agent'
-with open('<TRANSCRIPT_PATH>') as f:
+import json, sys
+TOOL = sys.argv[2]
+with open(sys.argv[1]) as f:
     for i, line in enumerate(f):
         d = json.loads(line)
         if d.get('type') == 'assistant':
             for block in d.get('message',{}).get('content',[]):
                 if block.get('type') == 'tool_use' and block.get('name') == TOOL:
-                    inp = json.dumps(block.get('input',{}))[:500]
-                    print(f'Line {i}: {block[\"name\"]} -> {inp}')
-                    print()"
+                    print(f'Line {i}: {json.dumps(block.get(\"input\",{}))[:500]}')
+                    print()
+" /path/to/transcript.jsonl Bash
 ```
 
-### Analyze a specific sub-agent transcript
-Use the comprehensive script above but change the file path to the sub-agent's `.jsonl` file (found in `<session-dir>/subagents/agent-<id>.jsonl`).
-
-## JSONL Message Types Reference
-
-| Type | Key Fields | Notes |
-|------|-----------|-------|
-| `user` | `message.content` (string or array) | String = user text. Array = tool results. |
-| `assistant` | `message.content[]` (thinking/text/tool_use), `message.usage` | Main conversation turns |
-| `progress` | `data.hookEvent`, `data.hookName` | Hook execution events — usually noise |
-| `system` | `subtype`: `turn_duration` or `local_command` | Turn timing and `!` commands |
-| `queue-operation` | `operation`, `content` | Queued user input |
-| `file-history-snapshot` | `snapshot.trackedFileBackups` | File tracking checkpoints |
-| `last-prompt` | `lastPrompt` | Final message marker |
-
-## Sub-agent Meta Format
-
-```json
-{ "agentType": "Explore|general-purpose|Plan|browser-automation|claude-code-guide", "description": "optional task description" }
+### Search for user corrections / frustration
+```bash
+python3 -c "
+import json, sys, re
+pattern = re.compile(r'\b(no|don.t|wrong|stop|not that|ugh|damn|wtf|fuck)\b', re.I)
+with open(sys.argv[1]) as f:
+    for i, line in enumerate(f):
+        d = json.loads(line)
+        if d.get('type') == 'user' and isinstance(d.get('message',{}).get('content'), str):
+            if pattern.search(d['message']['content']):
+                print(f'[{d.get(\"timestamp\",\"\")[:19]}] {d[\"message\"][\"content\"][:300]}')
+" /path/to/transcript.jsonl
 ```
 
-Sub-agent transcripts use the same JSONL format with extra fields: `"isSidechain": true`, `"agentId": "<id>"`.
+### Analyze a specific sub-agent in detail
+Run the main analysis script but pass the sub-agent's `.jsonl` path instead:
+```bash
+# Find sub-agent files
+ls ~/.claude/projects/<project>/<session-id>/subagents/
+
+# Then run the main analysis script on the sub-agent transcript
+python3 -c "..." ~/.claude/projects/<project>/<session-id>/subagents/agent-<id>.jsonl
+```
+
+## Directory Layout Reference
+
+```
+~/.claude/
+├── projects/<encoded-path>/              # Path with / → -, e.g. -Users-alice-code-myproject
+│   ├── sessions-index.json               # {"version":1, "entries":[{sessionId, firstPrompt, summary, messageCount, created, modified, gitBranch, ...}]}
+│   ├── <session-uuid>.jsonl              # Main transcript (one JSON object per line)
+│   └── <session-uuid>/subagents/         # Sub-agent data
+│       ├── agent-<id>.meta.json          # {"agentType":"Explore|general-purpose|Plan|...", "description":"..."}
+│       └── agent-<id>.jsonl              # Sub-agent transcript (same format as main)
+└── history.jsonl                         # Global history (very large — avoid)
+```
+
+## JSONL Message Types Quick Reference
+
+| Type | Subtype | What it is |
+|------|---------|------------|
+| `user` | — | User text (content=string) or tool results (content=array with `tool_result` items) |
+| `assistant` | — | Claude response: `content[]` has `thinking`, `text`, and `tool_use` blocks. Has `usage` with token counts. |
+| `progress` | — | Hook events (noise, skip) |
+| `system` | `turn_duration` | End-of-turn marker with `durationMs` |
+| `system` | `local_command` | User ran `! command` |
+| `queue-operation` | — | Queued input |
+| `file-history-snapshot` | — | File tracking checkpoint |
+| `last-prompt` | — | Session end marker |
 
 ## Performance Reflection Checklist
 
-When asked to evaluate how Claude performed in a session:
-
-- **Completeness**: Did the session produce the requested deliverable?
-- **User corrections**: Search for messages containing "no", "don't", "wrong", "stop", "not that"
-- **Failed tool calls**: Count `is_error: true` in tool results
-- **Retries**: Same tool called multiple times with similar inputs
-- **Efficiency**: Total tool calls, token usage, cache hit ratio (`cache_read / (input + cache_read)`)
-- **Skill usage**: Did Claude activate relevant skills when it should have?
-- **Sub-agent usage**: Were sub-agents spawned appropriately or wastefully?
-- **Session outcome**: Check if the last message is `last-prompt` (normal end), `tool_result` (interrupted mid-turn), or `assistant` with `stop_reason: "end_turn"` (completed)
+When evaluating Claude's performance:
+- **Completeness**: Did the session produce the deliverable? Check session outcome.
+- **User corrections**: Run the corrections search script above.
+- **Failed tool calls**: Check errors count from main analysis.
+- **Retries**: Same tool called multiple times with similar inputs.
+- **Efficiency**: Tool call count, token cache hit ratio.
+- **Skill usage**: Did Claude activate relevant skills?
+- **Sub-agent usage**: Appropriate or wasteful?

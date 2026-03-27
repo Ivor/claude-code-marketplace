@@ -35,3 +35,27 @@
 - Provide a single comprehensive python3 analysis script that extracts everything in one pass
 - Add explicit "do NOT spawn sub-agents for transcript analysis" guidance
 - Add sub-agent discovery step
+
+### Iteration 2 — Improved skill (simple transcript, no sub-agents)
+- **Prompt**: Same as iteration 1
+- **Session ID**: `d2767369-897b-454c-b652-26564909c788`
+- **Duration**: 98,849ms (63% faster than baseline)
+- **Turns**: 9
+- **Tool calls**: 8 total (all main session, no sub-agents)
+  - 6 Bash, 2 Read
+- **Result quality**: Good — accurate, more detailed than iteration 1, correct tool counts, good performance assessment
+- **Score**: 8 tool calls (58% reduction from baseline)
+
+**Issues identified:**
+1. **Still used Read on JSONL** — tried Read first (failed with token limit), then Read with limit=200, then fell back to Bash. The "NEVER use Read" rule was ignored.
+2. **Didn't use the comprehensive script** — wrote 6 separate python3 scripts sequentially instead of the provided one-pass script. Each re-opened and re-parsed the file.
+3. **No sub-agents spawned** — this rule was followed.
+
+**Diagnosis:** The skill puts the comprehensive script deep in the document. Claude reads the rules but still defaults to its instincts (Read tool first). The script must be the FIRST thing Claude sees after the rules, and must be trivially copy-pasteable (no placeholders to think about).
+
+**Plan for iteration 3:**
+- Restructure: put the comprehensive script FIRST, before any reference material
+- Make script accept file path as command-line argument (no placeholder replacement)
+- Reduce reference material — move format docs to the bottom as an appendix
+- Make the "NEVER Read JSONL" rule louder and explain WHY (lines are 100K+ chars)
+- Add instruction: "Run this script FIRST, then answer from its output"

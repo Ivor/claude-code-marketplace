@@ -69,6 +69,12 @@ with open(sys.argv[1]) as f:
 " /path/to/transcript.jsonl
 ```
 
+### Detect meandering, retries, and circular patterns
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/detect_meandering.py /path/to/transcript.jsonl
+```
+Shows a timeline of all tool calls, then flags: repeated similar calls (retries), Read failures, circular patterns (same call made 3+ times), silent stretches (many tools with no text output), and errors. Also analyzes sub-agents and flags high tool counts (>30 = high, >15 = elevated). Use when the user asks about inefficiency, meandering, or "what went wrong."
+
 ### Analyze a sub-agent in isolation
 The main script already summarizes sub-agents. For full detail on a specific one, run the same analysis script on the sub-agent's JSONL:
 ```bash

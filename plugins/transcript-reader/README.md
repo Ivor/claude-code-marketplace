@@ -126,12 +126,6 @@ The exploration sub-agents that researched transcript formats made the exact sam
 
 ## How It Works
 
-### The Description Trick
-
-The skill's `description` field says "MUST activate before reading any .jsonl transcript file" — this forces Claude to invoke the Skill tool, which loads the full instructions. Without this, Claude defaults to using the Read tool on JSONL files, which fails because each line can be 100K+ characters.
-
-This was discovered through 5 optimization iterations: the skill body had clear rules ("NEVER use Read"), but those rules were invisible until the Skill tool was invoked. The description is the only thing Claude sees by default.
-
 ### The Scripts
 
 **`analyze_transcript.py`** — Single-pass Python script that reads the entire JSONL file once and extracts:

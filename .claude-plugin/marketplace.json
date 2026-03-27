@@ -1,6 +1,6 @@
 {
   "name": "ivors-claude-code-marketplace",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "description": "Ivor's collection of Claude Code plugins",
   "owner": {
     "name": "Ivor Paul",
@@ -39,6 +39,19 @@
       "description": "Analyze Claude Code session transcripts — tool usage, sub-agents, token costs, meandering detection",
       "source": "./plugins/transcript-reader",
       "category": "debugging",
+      "metadata": {
+        "version": "1.0.0",
+        "license": "MIT"
+      },
+      "author": {
+        "name": "Ivor Paul"
+      }
+    },
+    {
+      "name": "skill-optimizer",
+      "description": "Iteratively improve Claude Code skills via measured test-refine-commit cycles",
+      "source": "./plugins/skill-optimizer",
+      "category": "workflow",
       "metadata": {
         "version": "1.0.0",
         "license": "MIT"

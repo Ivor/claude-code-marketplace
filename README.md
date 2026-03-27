@@ -16,6 +16,12 @@ Instantly discover file dependencies and module relationships in Elixir projects
 
 **[View Plugin Documentation](./plugins/elixir-quick-context/README.md)**
 
+### skill-optimizer
+
+Iteratively improve Claude Code skills through measured test-refine-commit cycles. Run a skill via `claude -p`, analyze the transcript, identify waste, improve, and repeat. Includes the "Description Trick" — a key insight about how skill descriptions control whether the skill body is ever loaded.
+
+**[View Plugin Documentation](./plugins/skill-optimizer/README.md)**
+
 ### transcript-reader
 
 Analyze Claude Code session transcripts — what happened, which tools were used, how sub-agents performed, and where things went wrong. Includes meandering detection to find retries, circular patterns, and wasted effort.
@@ -36,6 +42,7 @@ claude plugin marketplace add Ivor/claude-code-marketplace
 claude plugin install skill-checker@ivors-claude-code-marketplace
 claude plugin install elixir-quick-context@ivors-claude-code-marketplace
 claude plugin install transcript-reader@ivors-claude-code-marketplace
+claude plugin install skill-optimizer@ivors-claude-code-marketplace
 ```
 
 ### Step 3: Enable auto-update
@@ -73,11 +80,16 @@ claude-code-marketplace/              # Marketplace root
     │   │   └── plugin.json
     │   ├── skills/
     │   └── scripts/
-    └── transcript-reader/            # Session transcript analysis
+    ├── transcript-reader/            # Session transcript analysis
+    │   ├── .claude-plugin/
+    │   │   └── plugin.json
+    │   ├── skills/
+    │   └── scripts/
+    └── skill-optimizer/              # Skill optimization loop
         ├── .claude-plugin/
         │   └── plugin.json
         ├── skills/
-        └── scripts/
+        └── references/
 ```
 
 ## Contributing

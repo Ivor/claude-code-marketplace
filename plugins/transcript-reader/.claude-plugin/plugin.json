@@ -1,0 +1,18 @@
+{
+  "name": "transcript-reader",
+  "version": "1.0.0",
+  "description": "Analyze Claude Code session transcripts — tool usage, sub-agents, token costs, meandering detection, and performance reflection.",
+  "author": {
+    "name": "Ivor Paul"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/Ivor/claude-code-marketplace",
+  "keywords": [
+    "transcripts",
+    "sessions",
+    "analysis",
+    "reflection",
+    "debugging"
+  ],
+  "skills": "./skills"
+}

@@ -16,6 +16,12 @@ Instantly discover file dependencies and module relationships in Elixir projects
 
 **[View Plugin Documentation](./plugins/elixir-quick-context/README.md)**
 
+### transcript-reader
+
+Analyze Claude Code session transcripts — what happened, which tools were used, how sub-agents performed, and where things went wrong. Includes meandering detection to find retries, circular patterns, and wasted effort.
+
+**[View Plugin Documentation](./plugins/transcript-reader/README.md)**
+
 ## Installation
 
 ### Step 1: Add the marketplace
@@ -29,6 +35,7 @@ claude plugin marketplace add Ivor/claude-code-marketplace
 ```bash
 claude plugin install skill-checker@ivors-claude-code-marketplace
 claude plugin install elixir-quick-context@ivors-claude-code-marketplace
+claude plugin install transcript-reader@ivors-claude-code-marketplace
 ```
 
 ### Step 3: Enable auto-update
@@ -61,7 +68,12 @@ claude-code-marketplace/              # Marketplace root
     │   ├── hooks/
     │   ├── skills/
     │   └── test/
-    └── elixir-quick-context/         # Elixir dependency explorer
+    ├── elixir-quick-context/         # Elixir dependency explorer
+    │   ├── .claude-plugin/
+    │   │   └── plugin.json
+    │   ├── skills/
+    │   └── scripts/
+    └── transcript-reader/            # Session transcript analysis
         ├── .claude-plugin/
         │   └── plugin.json
         ├── skills/

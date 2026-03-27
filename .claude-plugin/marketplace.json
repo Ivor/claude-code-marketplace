@@ -1,6 +1,6 @@
 {
   "name": "ivors-claude-code-marketplace",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Ivor's collection of Claude Code plugins",
   "owner": {
     "name": "Ivor Paul",
@@ -28,6 +28,19 @@
       "category": "elixir",
       "metadata": {
         "version": "1.2.0",
+        "license": "MIT"
+      },
+      "author": {
+        "name": "Ivor Paul"
+      }
+    },
+    {
+      "name": "transcript-reader",
+      "description": "Analyze Claude Code session transcripts — tool usage, sub-agents, token costs, meandering detection",
+      "source": "./plugins/transcript-reader",
+      "category": "debugging",
+      "metadata": {
+        "version": "1.0.0",
         "license": "MIT"
       },
       "author": {

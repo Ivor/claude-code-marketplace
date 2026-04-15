@@ -311,6 +311,18 @@ mapping_matches() {
     # Check if tool matches
     matches_tool "$tool_name" "$tool_matcher" || return 1
 
+    # Safety: Skill tool mappings MUST have a tool_input_matcher.
+    # Without one, a broad tool_matcher (e.g. ".*") would block ALL Skill calls,
+    # creating an unresolvable deadlock (can't load the required skill because
+    # the Skill tool itself is blocked). Skip such mappings silently.
+    if [[ "$tool_name" == "Skill" ]]; then
+        local skill_input_matcher
+        skill_input_matcher="$(json_get "$mapping" '.tool_input_matcher')"
+        if [[ -z "$skill_input_matcher" ]]; then
+            return 1
+        fi
+    fi
+
     # Check tool_input_matcher if specified
     local tool_input_matcher
     tool_input_matcher="$(json_get "$mapping" '.tool_input_matcher')"
@@ -410,12 +422,10 @@ main() {
     # Extract tool information
     TOOL_NAME="$(json_get "$hook_data" '.tool_name')"
 
-    # Never block the Skill tool — it's the escape hatch for loading required skills.
-    # Blocking it creates an unresolvable deadlock.
-    if [[ "$TOOL_NAME" == "Skill" ]]; then
-        debug "DECISION: Skill tool always allowed (escape hatch)"
-        allow_tool_use
-    fi
+    # The Skill tool is NOT blanket-allowed. Mappings can block specific Skill
+    # calls (e.g. to redirect worktree-manager → docker-free-worktree), but
+    # only when the mapping has a tool_input_matcher. See mapping_matches()
+    # for the safety check that prevents accidental deadlocks.
 
     local tool_input_json
     tool_input_json="$(echo "$hook_data" | jq -c '.tool_input // {}')"

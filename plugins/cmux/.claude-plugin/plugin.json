@@ -1,0 +1,18 @@
+{
+  "name": "cmux",
+  "version": "1.0.0",
+  "description": "Drive cmux — the native macOS terminal multiplexer for AI agents — via its CLI: workspaces, panes, tabs, sidebar, and browser surfaces.",
+  "author": {
+    "name": "Ivor Paul"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/Ivor/claude-code-marketplace",
+  "keywords": [
+    "cmux",
+    "terminal",
+    "multiplexer",
+    "workspaces",
+    "automation"
+  ],
+  "skills": "./skills"
+}

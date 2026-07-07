@@ -4,47 +4,26 @@ description: Create or review the skill-checker configuration for the current pr
 user-invocable: true
 ---
 
-Set up or review the skill-checker config. Config is stored in the plugin data directory, not in the project.
+Set up or review the skill-checker config. Config lives in the plugin data directory, not in the project.
 
-## Resolve config location
+## Step 1: Resolve the config
 
 ```bash
-PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
-if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
-CONFIG_DIR="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}"
-CONFIG_FILE="${CONFIG_DIR}/config.json"
+CONFIG_FILE=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/resolve-config.sh)
 echo "Config path: $CONFIG_FILE"
-echo "Exists: $(test -f "$CONFIG_FILE" && echo yes || echo no)"
+test -f "$CONFIG_FILE" && echo "Exists: yes" || echo "Exists: no"
 ```
 
-## If config exists
+## Step 2a: Config exists
 
-Read it, explain each mapping in plain language, and ask if changes are needed.
+Read it and explain each mapping in plain language (format reference: `${CLAUDE_PLUGIN_ROOT}/references/config-format.md`). Done when every mapping has been explained and the user has said whether changes are needed.
 
-## If config doesn't exist
+## Step 2b: No config
 
-Ask the user what skills they use and what file types they work with. Create the config:
+Ask the user which skills they use and which file types they work with. Then create the config and add a mapping per answer:
 
 ```bash
-mkdir -p "$CONFIG_DIR"
+CONFIG_FILE=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/resolve-config.sh --init)
 ```
 
-## Config format
-
-```json
-{
-  "mappings": [
-    {
-      "skill": "skill-name",
-      "tool_matcher": "Read|Write|Edit|Grep|Glob",
-      "file_patterns": ["^lib/.*\\.ex$"],
-      "tool_input_matcher": "optional-pattern"
-    }
-  ]
-}
-```
-
-- **skill**: Skill name to require (short name, e.g. `elixir-quick-context` — the hook matches qualified plugin names automatically)
-- **tool_matcher**: Regex matching tool names. Use `|` for multiple.
-- **file_patterns**: Regex matched against **relative path from project root**. Anchor with `^`.
-- **tool_input_matcher**: Regex matched against tool input JSON (e.g. `"mix test"` for Bash)
+Mapping fields and pattern examples: `${CLAUDE_PLUGIN_ROOT}/references/config-format.md`. Done when the created config covers every skill the user named and they've confirmed it.

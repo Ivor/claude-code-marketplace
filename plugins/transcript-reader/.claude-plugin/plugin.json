@@ -1,6 +1,6 @@
 {
   "name": "transcript-reader",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Analyze Claude Code session transcripts — tool usage, sub-agents, token costs, meandering detection, and performance reflection.",
   "author": {
     "name": "Ivor Paul"

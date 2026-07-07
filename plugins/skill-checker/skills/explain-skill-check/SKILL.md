@@ -7,20 +7,23 @@ argument-hint: [skill-name]
 
 Show and explain the skill-checker configuration for this project.
 
-## Resolve config path
+## Step 1: Read the config
 
 ```bash
-PROJECT_KEY=$(git remote get-url origin 2>/dev/null | sed 's|[^a-zA-Z0-9]|_|g')
-if [ -z "$PROJECT_KEY" ]; then PROJECT_KEY=$(echo "$PWD" | sed 's|/|_|g' | sed 's|^_||'); fi
-CONFIG_FILE="${CLAUDE_PLUGIN_DATA}/projects/${PROJECT_KEY}/config.json"
-if [ -f "$CONFIG_FILE" ]; then cat "$CONFIG_FILE"; elif [ -f ".claude/hooks/skill-checker.json" ]; then cat ".claude/hooks/skill-checker.json"; else echo "No config found"; fi
+CONFIG_FILE=$(bash ${CLAUDE_PLUGIN_ROOT}/scripts/resolve-config.sh)
+cat "$CONFIG_FILE" 2>/dev/null || echo "No config found"
 ```
 
-## What to explain
+If no config exists, point the user at `/skill-checker:setup-skill-checker` and stop.
 
-For each mapping, give concrete match/no-match examples:
+## Step 2: Explain every mapping
+
+Field semantics: `${CLAUDE_PLUGIN_ROOT}/references/config-format.md`. For each mapping, give concrete match/no-match examples:
+
 - "Triggers on: Read, Edit. Does NOT trigger on: Bash, Grep"
 - "Matches: `lib/accounts/user.ex`. Does NOT match: `config/runtime.exs`"
+
+Done when every mapping in the config has been explained — then offer to modify or remove.
 
 ## To remove a mapping
 

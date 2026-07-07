@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.6.0] - 2026-07-07
+
+### Changed
+- Config path resolution extracted to `scripts/resolve-config.sh` (single source shared by all three skills; mirrors the hook's resolution order including the project-level fallback)
+- Mapping field documentation consolidated into `references/config-format.md`; the three skills now point at it instead of each carrying their own copy
+- All three SKILL.md files rewritten leaner with explicit steps and completion criteria
+
 ## [3.4.1] - 2026-03-25
 
 ### Fixed

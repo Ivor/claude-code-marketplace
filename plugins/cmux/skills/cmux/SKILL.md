@@ -50,7 +50,7 @@ Key distinctions:
 
 ## Sending Messages Between Terminals
 
-`cmux send` types text but does **not** press Enter. Always follow with `cmux send-key ... Enter`.
+`cmux send` types text but does **not** press Enter. Always follow with `cmux send-key ... Enter` — and press Enter **twice** (two separate `send-key ... Enter` calls). cmux delivers `send` as a bracketed paste, and the first Enter is frequently swallowed while the paste settles, leaving your message sitting UNSUBMITTED in the recipient's prompt. The second Enter reliably submits it.
 
 | Target | Flags needed | Example |
 |--------|-------------|---------|
@@ -62,7 +62,7 @@ Key distinctions:
 **Rules (verified):**
 - Cross-workspace without `--workspace` **errors**: `"Surface is not a terminal"`.
 - `--workspace` without `--surface` sends to whichever surface is currently selected — use with caution.
-- Always follow `cmux send` with `cmux send-key [same flags] Enter`.
+- Always follow `cmux send` with `cmux send-key [same flags] Enter` **twice** — the first Enter is often absorbed by the paste; the second submits. A single Enter frequently leaves the message unsent in the recipient's prompt.
 - Always check the `OK` response — it echoes the actual surface and workspace delivered to.
 
 ### Agent-to-Agent Communication
@@ -74,7 +74,9 @@ When sending a message to another terminal that has a Claude agent running, **al
 # 1. Run cmux identify to get your own refs
 # 2. Include them in the message to the other agent
 cmux send --workspace workspace:X --surface surface:Y \
-  "Your task here. When done, reply by running: cmux send --workspace workspace:MINE --surface surface:MINE 'your response here' && cmux send-key --workspace workspace:MINE --surface surface:MINE Enter"
+  "Your task here. When done, reply by running: cmux send --workspace workspace:MINE --surface surface:MINE 'your response here' && cmux send-key --workspace workspace:MINE --surface surface:MINE Enter && cmux send-key --workspace workspace:MINE --surface surface:MINE Enter"
+# Press Enter TWICE — the first is absorbed by the paste, the second submits.
+cmux send-key --workspace workspace:X --surface surface:Y Enter
 cmux send-key --workspace workspace:X --surface surface:Y Enter
 ```
 

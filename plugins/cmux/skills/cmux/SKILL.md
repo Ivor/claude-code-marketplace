@@ -227,6 +227,19 @@ cmux new-pane --type browser --direction right --url <url>   # defaults to calle
 
 Markdown is the exception — use `cmux markdown open` (see Viewing Files), not a browser pane.
 
+### Local HTML files (`file://`)
+
+To show the user a **local HTML file** in-workspace, a browser pane is the way — it runs real Chromium, so `file://` works directly, no server:
+
+```bash
+cmux new-pane --type browser --direction right --url "file:///abs/path.html"
+```
+
+- Do it in **your own workspace**. Verify with `cmux surface-health` (expect `type=browser`, `in_window=true`).
+- **Don't rely on `open <file>`.** It opens the OS default browser; cmux *sometimes* intercepts it into a pane (`OK surface=…`), but that's inconsistent across sessions/sockets. Use `cmux new-pane` for determinism.
+- **`playwright-cli` blocks `file://`** (only `http`/`https`/`about`/`data`). To screenshot-verify a local file with playwright, serve it first: `python3 -m http.server` then open `http://127.0.0.1:PORT/…`.
+- **Don't stage files in `/tmp`** — wiped on session/machine rotation (takes the server + files with it). Use a stable dir like `~/ci-speedup-charts/`.
+
 For **browser automation/testing** (click, type, eval, snapshot, screenshot) the cmux `browser` subcommands exist, but this project's standing rule is to use the `playwright-cli` terminal tool for that work — do not drive automation through `cmux browser`.
 
 ## Links

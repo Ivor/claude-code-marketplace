@@ -132,6 +132,12 @@ Without flags, both rename the caller's own workspace/tab.
 
 **Never close your own workspace or surface** — it kills your terminal session. Always check `cmux tree` first (your surface is marked `◀ here`).
 
+**Never close a pane to force a layout you inferred.** "Put it in the other
+pane" means use `cmux open --pane <ref>`, not close panes until one is left.
+Panes hold the user's own work, and a wrong guess destroys it. When the layout
+they want is not obvious, ask before closing anything. The one close that is
+always fair is a surface you created yourself that is not working.
+
 ## Restarting a Phoenix server (BEAM) in another surface
 
 Sending `Ctrl-C` to a `mix phx.server` surface drops the BEAM into the `BREAK:` menu — it does **not** abort by itself. Without sending the `a` + `Enter` follow-up, the port stays held and the next `mix phx.server` will fail.
@@ -209,13 +215,54 @@ The sidebar can show your progress without the user watching the terminal scroll
 
 ## Checking Surface Health
 
-`cmux surface-health [--workspace <ref>]` lists each surface with its `type` (terminal/browser) and whether it's live (`in_window=true`) — use it to confirm a surface exists and is attached before sending to it, or that one you just spawned came up.
+`cmux surface-health [--workspace <ref>]` lists each surface with its `type` and, **for terminal and browser surfaces only**, whether it's live (`in_window=true`) — use it to confirm one of those exists and is attached before sending to it, or that one you just spawned came up.
+
+**It says nothing about markdown and file-preview surfaces.** They are listed with a `type` and no `in_window` at all, so neither this nor `cmux tree` can tell you a document is on screen. Both will happily report a blank pane as present. Ask the user instead.
 
 ## Viewing Files
 
-For **markdown**, use the native viewer: `cmux markdown open <path>` — it renders the markdown in a formatted panel with live-reload, in the caller's workspace. Do **not** open a `.md` in a browser pane (over `file://` it shows raw plaintext), and prefer this over `glow`.
+**Use `cmux open <path> --pane <ref>`.** It renders markdown in a preview tab, and
+several files open as tabs **in the same pane**:
 
-For **code/other text files**, use `bat`.
+```bash
+cmux open ~/project/doc/plan.md --pane pane:10          # a tab in an existing pane
+cmux open ~/project/doc/a.md ~/project/doc/b.md         # both as tabs in one pane
+```
+
+| Flag | Means |
+|------|-------|
+| `--pane <ref>` | the pane that receives the file tabs |
+| `--surface <ref>` | the pane **owning that surface** receives the tabs |
+
+`cmux open` also handles directories and URLs. HTML opens in a browser split;
+anything that is not markdown opens in a file preview tab.
+
+**Do not reach for `cmux markdown open` to place a document.** Its `--surface`
+flag means "source surface to **split from**", so it *always* creates a new
+pane — there is no way to target an existing one. Asked for two documents in
+one pane it will make two panes, and closing panes to compensate destroys the
+user's layout. Two surfaces it created on 27 Aug 2026 also rendered blank while
+the `cmux open` ones rendered.
+
+Do **not** open a `.md` in a browser pane (over `file://` it shows raw
+plaintext), and prefer either of these over `glow`.
+
+For **code/other text files**, `cmux open` gives a file preview tab; use `bat`
+when you want the content in your own terminal instead.
+
+### You cannot verify a document rendered
+
+`cmux surface-health` reports `in_window=true|false` for **terminal** surfaces
+and **nothing** for markdown ones. `cmux tree` proves a surface exists, not that
+it is on screen.
+
+So never report "opened and showing". Say what you did and ask:
+
+> Opened `plan.md` as a tab in pane:10. I cannot check from here whether it is
+> rendering — can you see it?
+
+If the user says it is blank, close that one surface and open it again with
+`cmux open`. Do not close any other pane to fix it.
 
 ## Browser
 
